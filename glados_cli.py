@@ -14,9 +14,8 @@ CLIENT_ID = os.getenv("GLADOS_CLIENT_ID")
 
 DEVICE_CODE_URL = "https://github.com/login/device/code"
 ACCESS_TOKEN_URL = "https://github.com/login/oauth/access_token"
-VIEW_EXPERIMENT_URL = "http://localhost:3000/api/experiments/queryExp"
-AUTH_URL = "http://localhost:3000/api/auth/tokenAuth/token"
-EXPERIMENT_STATUS_URL = "http://localhost:3000/api/experiments/status"
+VIEW_EXPERIMENT_URL = f"{API_HOST}/api/experiments/queryExp"
+AUTH_URL = f"{API_HOST}/api/auth/tokenAuth/token"
 
 EX_UNKNOWN = -2
 EX_PARSE_ERROR = -1
@@ -75,7 +74,7 @@ class RequestManager(object):
             user_token = {"token": token}
             res = requests.post(AUTH_URL, verify=False, json=user_token, timeout=5)
             response = res.json()
-            self.token = token
+            self.token: str = token
             return {"uid": response["_id"], "error": None}
         except requests.RequestException as error:
             return {"uid": None, "error": f'{error}'}
@@ -84,24 +83,13 @@ class RequestManager(object):
     def upload_and_start_experiment(self, experiment_path: str) -> Dict[str, typing.Any]:
         return EX_SUCCESS  # Implementation for uploading and starting an experiment
     
-    def query_experiments(self, experiment_name: str, token: str) -> Dict[str, typing.Any]:
+    def query_experiments(self, experiment_name: str) -> Dict[str, typing.Any]:
         experiment_req_json = {
-            "token": token,
+            "token": self.token,
             "exp_title": experiment_name
         }
         try:
             res = requests.post(VIEW_EXPERIMENT_URL, verify=False, json=experiment_req_json, timeout=20)
-        except requests.RequestException as error:
-            perror(f'{error}')
-        return res.json()
-    
-    def get_experiment_status(self, experiment_id: str, token: str) -> Dict[str, typing.Any]:
-        experiment_req_json = {
-            "token": token,
-            "eid": experiment_id
-        }
-        try:
-            res = requests.post(EXPERIMENT_STATUS_URL, verify=False, json=experiment_req_json, timeout=20)
         except requests.RequestException as error:
             perror(f'{error}')
         return res.json()
@@ -146,23 +134,12 @@ def upload_and_start_experiment(request_manager: RequestManager, experiment_path
     print(f"Experiment started successfully (ID = {results['exp_id']}).")
     return EX_SUCCESS
 
-def get_experiment_status(request_manager: RequestManager, eid):
-    results = request_manager.get_experiment_status(eid, get_token())
-    if not results.get('success', False):
-        if results['error'] == 'not_found':
-            perror(f"error: Experiment '{eid}' not found.")
-            return EX_NOTFOUND
-        else:
-            perror(f"error: backend: {results.get('error')}")
-            return EX_UNKNOWN
-    print(f"Status: {results['status']} ({results['current_permutation']}/{results['total_permutations']} permutations)")
-    return EX_SUCCESS
 
 def query_experiments(request_manager: RequestManager, title: str):
     results = request_manager.query_experiments(title, get_token())
     print("Matches:")
     for index, match in enumerate(results["matches"]):
-        s = match["startedAtEpochMillis"] / 1000.0
+        s = match["started_on"] / 1000.0
         time_started = datetime.fromtimestamp(s)
         print("***********************************************")
         print(f"Experiment {index + 1}: {match['name']}")
@@ -183,7 +160,7 @@ def validate_experiment_file(filepath: str) -> Optional[str]:
 def store_token(token: str) -> str:
     with open(".token.glados", "w") as token_file:
         token_file.write(token)
-    return "Successfully stored authentication token!"
+    return EX_SUCCESS
 
 def get_token() -> str:
     with open(".token.glados", "r") as token_file:
@@ -199,61 +176,54 @@ def parse_args(request_manager: RequestManager, args: Optional[typing.Sequence[s
     parser = argparse.ArgumentParser(
         prog="GLADOS CLI",
         description="The command line interface for GLADOS.")
-    
-    #TODO: How to get no argument generate option without having the awkward store_true argument
-    parser.add_argument('--generate',  '-g', action='store_true', help='Generate or update token to use.')
-    parser.add_argument('--token',  '-t', type=str, help='Authentication token to use.')
-    parser.add_argument('--upload', '-z', type=str, help='Upload a ZIP file. Cannot be used with -s, -q, or -d.')
-    parser.add_argument('--query',  '-q', type=str, help='Search for experiments with the specified name. Cannot be used with -z, -s, or -d.')
-    parser.add_argument('--status', '-s', type=str, help='View the status of an experiment. Cannot be used with -z, -q, or -d.')
-    parser.add_argument('--download', '-d', type=str, help='Download the results of a completed experiment. Cannot be used with -z, -q, or -s.')
+    parser.add_argument('--generate-token', action='store_true', help='Generate a new authentication token and exit, regardless of other options used.')
+    parser.add_argument('--token',  '-t', type=str, help='Authentication token to use. If none is provided, it will either read ".token.glados" or prompt to generate a new token.')
+    parser.add_argument('--upload', '-z', type=str, help='Upload a ZIP file. Cannot be used with -q, or -d.')
+    parser.add_argument('--query',  '-q', type=str, help='Query experiment status of experiments with a given name. If the name is "*", show all experiments. Cannot be used with -z or -d.')
+    parser.add_argument('--download', '-d', type=str, help='Download the results of a completed experiment. Cannot be used with -z or -s.')
     
     parsed = parser.parse_args(args)
 
-    #TODO: Change logic to passing through token to each method instead of reading each time
-    if not parsed.generate and not parsed.token:
+    if not parsed.token:
         if not os.path.exists(".token.glados"):
-            perror("error: Please provide an authentication token using '-t <token>' or by creating a file named '.token.glados'.")
+            perror("error: No token provided and no stored token found. Please generate a token using --generate-token.")
             return EX_INVALID_TOKEN
-        # else:
-        #     parsed.token = get_token()
+        else:
+            parsed.token = get_token()
     
-    # Check that exactly one of -z, -q, or -s is provided
-    if not exactly_one([parsed.generate, parsed.upload, parsed.query, parsed.status, parsed.download, parsed.token]):
-        perror("error: Exactly one of -g, -t, -z, -q, -s, or -d must be provided.")
+    if parsed.generate_token:
+        generate_token(request_manager)
+        sys.stdout, sys.stderr = _out, _err
+        return EX_SUCCESS
+    
+    if not exactly_one([parsed.upload, parsed.query, parsed.download]):
+        perror("error: Exactly one of -z, -q, or -d must be provided.")
         return EX_PARSE_ERROR
     
-    # TODO: Does this serve a purpose when we have to reauthenticate to get UID at each step?
-    # if not request_manager.authenticate(parsed.token):
-    #     perror("error: Cannot authenticate token - check your internet connection and token.")
-    #     return EX_INVALID_TOKEN
+    if not request_manager.authenticate(parsed.token):
+        perror("error: Cannot authenticate token - check your internet connection and token.")
+        return EX_INVALID_TOKEN
     
     # Authentication successful, proceed with requested operation
     result = EX_SUCCESS
-    if parsed.generate:
-        result = generate_token(request_manager)
     if parsed.token:
         result = store_token(parsed.token)
+        if result != EX_SUCCESS:
+            perror("error: An unexpected error occurred while storing the token.")
+        
     if parsed.upload:
         result = upload_and_start_experiment(request_manager, parsed.upload)
-    if parsed.status:
-        result = get_experiment_status(request_manager, parsed.status)
     if parsed.query:
         result = query_experiments(request_manager, parsed.query)
     
     # Restore original stdout and stderr
     sys.stdout, sys.stderr = _out, _err
     return result
-    
 
 
 def exactly_one(args : typing.Sequence[str]) -> bool:
     """Returns True if exactly one argument in args is not None."""
-    count = 0
-    for arg in args:
-        if arg is not None and arg is not False:
-            count += 1
-    return count == 1
+    return sum(1 for arg in args if arg) == 1
     
 
 def main():

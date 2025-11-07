@@ -34,22 +34,26 @@ class GladosCliTests(unittest.TestCase):
         
     def _assert_in_output(self, substring: str) -> None:
         output = self.out.getvalue()
+        if (substring not in output):
+            print("OUTPUT:")
+            print(output)
         self.assertIn(substring, output)
         
     def _assert_in_error(self, substring: str) -> None:
         error = self.err.getvalue()
+        if (substring not in error):
+            print("ERROR:")
+            print(error)
         self.assertIn(substring, error)
     
     def test_mutually_exclusive_parameters(self) -> None:
         # Test that -s and -z cannot be used together
-        self._assert_status_code(['-s', '', '-z', 'another_value'], gcli.EX_PARSE_ERROR)
+        self._assert_status_code(['-q', 'some_value', '-z', 'another_value'], gcli.EX_PARSE_ERROR)
+        self._assert_status_code(['-d', 'some_value', '-q', 'another_value'], gcli.EX_PARSE_ERROR)
+        self._assert_status_code(['-z', 'some_value', '-d', 'another_value'], gcli.EX_PARSE_ERROR)
         self._assert_in_error("-z")
         self._assert_in_error("-q")
-        self._assert_in_error("-s")
         self._assert_in_error("-d")
-        self._assert_status_code(['-q', 'some_value', '-z', 'another_value'], gcli.EX_PARSE_ERROR)
-        self._assert_status_code(['-s', 'some_value', '-q', 'another_value'], gcli.EX_PARSE_ERROR)
-        self._assert_status_code(['-s', 'some_value', '-d', 'another_value'], gcli.EX_PARSE_ERROR)
         
     def test_with_invalid_token(self) -> None:
         # Test with an invalid token
@@ -58,7 +62,7 @@ class GladosCliTests(unittest.TestCase):
         self._assert_in_error("token")
         self._assert_status_code(['-t', 'invalid_token2', '-q', 'experiment_name'], gcli.EX_INVALID_TOKEN)
         self._assert_in_error("token")
-        self._assert_status_code(['-t', 'invalid_token3', '-s', 'experiment_type'], gcli.EX_INVALID_TOKEN)
+        self._assert_status_code(['-t', 'invalid_token3', '-d', 'experiment.zip'], gcli.EX_INVALID_TOKEN)
         self._assert_in_error("token")
         self.request_manager.authenticate.assert_has_calls([
             mock.call('invalid_token1'), 
@@ -95,11 +99,17 @@ class GladosCliTests(unittest.TestCase):
         self.request_manager.upload_and_start_experiment.assert_called_with('valid-experiment.zip')
         self._assert_in_output('expabc')
         
-    def test_with_no_stored_token(self) -> None:
-        # Test running an experiment without any token
         os.remove('.token.glados')
-        self._assert_status_code(['-z', 'valid-experiment.zip'], gcli.EX_INVALID_TOKEN)
-        self._assert_in_error('token')
+        
+    def test_generate_token(self) -> None:
+        # Test running an experiment without any token
+        self.request_manager.generate_token.return_value = {
+            "access_token": "new_valid_token",
+            "error": None
+        }
+        self._assert_status_code(['--generate-token'], gcli.EX_SUCCESS)
+        self.request_manager.generate_token.assert_called_once()
+        self._assert_in_output('new_valid_token')
     
     def test_run_missing_experiment(self) -> None:
         # Test running a non-existent experiment file
@@ -155,58 +165,6 @@ class GladosCliTests(unittest.TestCase):
         self.request_manager.upload_and_start_experiment.assert_called_with('valid-experiment.zip')
         self._assert_in_error('other')
         
-    def test_get_experiment_status(self) -> None:
-        # Test getting the status of an experiment
-        self.request_manager.authenticate.return_value = True
-        self.request_manager.get_experiment_status.return_value = {
-            'success': True,
-            'status': 'completed',
-            'current_permutation': 500,
-            'total_permutations': 500
-        }
-        self._assert_status_code(['-t', 'valid_token', '-s', 'exp123'], gcli.EX_SUCCESS)
-        self.request_manager.authenticate.assert_called_with('valid_token')
-        self.request_manager.upload_and_start_experiment.assert_not_called()
-        self.request_manager.get_experiment_status.assert_called_with('exp123')
-        self._assert_in_output('completed')
-        self._assert_in_output('500/500')
-        
-        self.request_manager.get_experiment_status.return_value = {
-            'success': True,
-            'status': 'running',
-            'current_permutation': 100,
-            'total_permutations': 500
-        }
-        self._assert_status_code(['-t', 'valid_token', '-s', 'exp123'], gcli.EX_SUCCESS)
-        self.request_manager.authenticate.assert_called_with('valid_token')
-        self.request_manager.get_experiment_status.assert_called_with('exp123')
-        self._assert_in_output('running')
-        self._assert_in_output('100/500')
-        
-    def test_get_nonexistent_experiment_status(self) -> None:
-        # Test getting the status of a non-existent experiment
-        self.request_manager.authenticate.return_value = True
-        self.request_manager.get_experiment_status.return_value = {
-            'success': False,
-            'error': 'not_found'
-        }
-        self._assert_status_code(['-t', 'valid_token', '-s', 'nonexistent_exp'], gcli.EX_NOTFOUND)
-        self.request_manager.authenticate.assert_called_with('valid_token')
-        self.request_manager.get_experiment_status.assert_called_with('nonexistent_exp')
-        self._assert_in_error('not found')
-        
-    def test_get_experiment_status_other_backend_failure(self) -> None:
-        # Test getting the status of an experiment where the backend fails for unknown reasons
-        self.request_manager.authenticate.return_value = True
-        self.request_manager.get_experiment_status.return_value = {
-            'success': False,
-            'error': 'other'
-        }
-        self._assert_status_code(['-t', 'valid_token', '-s', 'exp123'], gcli.EX_UNKNOWN)
-        self.request_manager.authenticate.assert_called_with('valid_token')
-        self.request_manager.get_experiment_status.assert_called_with('exp123')
-        self._assert_in_error('other')
-        
     def test_query_one_experiment(self):
         self.request_manager.authenticate.return_value = True
         self.request_manager.query_experiments.return_value = {
@@ -216,7 +174,7 @@ class GladosCliTests(unittest.TestCase):
                  'name': 'Test Experiment', 
                  'tags': ['tag1', 'tag2'],
                  'status': 'completed',
-                 'started_on': '2024-01-01T12:00:00Z'},
+                 'started_on': 1762488593221},
             ]
         }
         self._assert_status_code(['-t', 'valid_token', '-q', 'Test Experiment'], gcli.EX_SUCCESS)
