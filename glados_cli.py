@@ -4,9 +4,13 @@ import sys
 import typing
 import zipfile
 import time
-from typing import Any
+from typing import Any, Dict, Optional
 import requests
 from datetime import datetime
+
+API_HOST = "http://localhost:3000"
+
+CLIENT_ID = os.getenv("GLADOS_CLIENT_ID")
 
 DEVICE_CODE_URL = "https://github.com/login/device/code"
 ACCESS_TOKEN_URL = "https://github.com/login/oauth/access_token"
@@ -25,7 +29,7 @@ class RequestManager(object):
     def __init__(self):
         pass  # Initialization code for RequestManager
     
-    def generate_token(self) -> dict[str, Any]:
+    def generate_token(self) -> Dict[str, Any]:
         device_code_url = DEVICE_CODE_URL
         scope = "read:user user:email"
         data_GitHub = {"client_id": CLIENT_ID, "scope": scope}
@@ -43,7 +47,7 @@ class RequestManager(object):
     
         while (current_time < expire_time):
             access_token_url = ACCESS_TOKEN_URL
-            data_GitHub = {"client_id":"Ov23livJkEfAtIMMnwIP", "device_code": device_code, "grant_type": "urn:ietf:params:oauth:grant-type:device_code"}
+            data_GitHub = {"client_id":CLIENT_ID, "device_code": device_code, "grant_type": "urn:ietf:params:oauth:grant-type:device_code"}
             time.sleep(interval)
             res = requests.post(access_token_url, data=data_GitHub, headers={"Accept": "application/json"}, timeout=interval)
             current_time += interval
@@ -66,22 +70,21 @@ class RequestManager(object):
         return {"access_token": None, "error": "Time out occurred"}   
         # Implementation for generating a device token for authorization   
     
-    #TODO: Tonight
-    def authenticate(self, token: str) -> dict[str, typing.Any]:
+    def authenticate(self, token: str) -> Dict[str, typing.Any]:
         try:
             user_token = {"token": token}
             res = requests.post(AUTH_URL, verify=False, json=user_token, timeout=5)
             response = res.json()
+            self.token = token
             return {"uid": response["_id"], "error": None}
         except requests.RequestException as error:
             return {"uid": None, "error": f'{error}'}
         # Implementation for authenticating with the provided token
     
-    def upload_and_start_experiment(self, experiment_path: str) -> dict[str, typing.Any]:
+    def upload_and_start_experiment(self, experiment_path: str) -> Dict[str, typing.Any]:
         return EX_SUCCESS  # Implementation for uploading and starting an experiment
     
-    #TODO: Tonight
-    def query_experiments(self, experiment_name: str, token: str) -> dict[str, typing.Any]:
+    def query_experiments(self, experiment_name: str, token: str) -> Dict[str, typing.Any]:
         experiment_req_json = {
             "token": token,
             "exp_title": experiment_name
@@ -91,10 +94,8 @@ class RequestManager(object):
         except requests.RequestException as error:
             perror(f'{error}')
         return res.json()
-        # Implementation for querying experiments by name
     
-    #TODO: Tonight
-    def get_experiment_status(self, experiment_id: str, token: str) -> dict[str, typing.Any]:
+    def get_experiment_status(self, experiment_id: str, token: str) -> Dict[str, typing.Any]:
         experiment_req_json = {
             "token": token,
             "eid": experiment_id
@@ -104,9 +105,8 @@ class RequestManager(object):
         except requests.RequestException as error:
             perror(f'{error}')
         return res.json()
-        # pass  # Implementation for viewing the status of an experiment
     
-    def download_experiment_results(self, experiment_id: str, destination_path: str) -> dict[str, typing.Any]:
+    def download_experiment_results(self, experiment_id: str, destination_path: str) -> Dict[str, typing.Any]:
         pass  # Implementation for downloading experiment results
     
 def perror(*args, **kwargs) -> None:
@@ -122,12 +122,9 @@ def generate_token(request_manager: RequestManager) -> str:
         return access_token
     else:
         perror(f'{result["error"]}')
-    
-#TODO: Tonight
+
 def validate_token(request_manager: RequestManager, token: str) -> bool:
     """Validates the provided authentication token."""
-    # Placeholder implementation for token validation
-    # return token == "valid_token"
     result = request_manager.authenticate(token)
     return result['error'] is None
 
@@ -175,7 +172,7 @@ def query_experiments(request_manager: RequestManager, title: str):
         print(f"Time Started: {time_started}\n")
     return EX_SUCCESS
 
-def validate_experiment_file(filepath: str) -> str | None:
+def validate_experiment_file(filepath: str) -> Optional[str]:
     if not zipfile.is_zipfile(filepath):
         return f"'{filepath}' is in an invalid format."
     with zipfile.ZipFile(filepath, 'r') as zf:
@@ -193,7 +190,7 @@ def get_token() -> str:
         token = token_file.read().strip()
     return token
 
-def parse_args(request_manager: RequestManager, args: typing.Sequence[str] | None=None, stdout = sys.stdout, stderr = sys.stderr) -> int:
+def parse_args(request_manager: RequestManager, args: Optional[typing.Sequence[str]]=None, stdout = sys.stdout, stderr = sys.stderr) -> int:
     
     # Save original stdout and stderr
     _out, _err = sys.stdout, sys.stderr
@@ -202,9 +199,10 @@ def parse_args(request_manager: RequestManager, args: typing.Sequence[str] | Non
     parser = argparse.ArgumentParser(
         prog="GLADOS CLI",
         description="The command line interface for GLADOS.")
+    
     #TODO: How to get no argument generate option without having the awkward store_true argument
-    parser.add_argument('--generate',  '-g', action='store_true', help='Generate or update token to use. Required.')
-    parser.add_argument('--token',  '-t', type=str, help='Authentication token to use. Required.')
+    parser.add_argument('--generate',  '-g', action='store_true', help='Generate or update token to use.')
+    parser.add_argument('--token',  '-t', type=str, help='Authentication token to use.')
     parser.add_argument('--upload', '-z', type=str, help='Upload a ZIP file. Cannot be used with -s, -q, or -d.')
     parser.add_argument('--query',  '-q', type=str, help='Search for experiments with the specified name. Cannot be used with -z, -s, or -d.')
     parser.add_argument('--status', '-s', type=str, help='View the status of an experiment. Cannot be used with -z, -q, or -d.')
@@ -249,7 +247,7 @@ def parse_args(request_manager: RequestManager, args: typing.Sequence[str] | Non
     
 
 
-def exactly_one(args : list[str]) -> bool:
+def exactly_one(args : typing.Sequence[str]) -> bool:
     """Returns True if exactly one argument in args is not None."""
     count = 0
     for arg in args:

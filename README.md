@@ -10,47 +10,41 @@ Below are the operations you can perform (note that they are mutually exclusive 
 ## Upload & Run Experiments
 
 To upload and run an experiment, use the `-z` or `--upload-zip` option:
-```
+
+```sh
 python glados-cli.py -z <ZIP file containing your experiment>
 ```
 
 In order for the upload to succeed, the ZIP file must contain the following
- - a Python file with your experiment's code
- - requirements.txt
- - specifications.txt
 
-Some additional fields you can provide include the following:
-```
-    --title - the experiment's title (otherwise will be auto-generated)
-    --tags - a comma-separated list of experiment tags
-```
+- a Python file with your experiment's code
+- requirements.txt
+- manifest.yaml
 
 Upon running the experiment, its ID will be printed.
-
-## Check Experiment Status
-
-To see a list of all of your running experiments, use the `-s` or `--status` option:
-```
-python glados-cli.py -s [experiment ID]
-```
-
-Providing an experiment ID will display the status of that experiment, which includes its state and the number of permutations it has completed.
 
 ## Query Experiments
 
 To search experiments, use the `-q` or `--query` option:
+
+```sh
+python glados-cli.py -q [experiment title]
 ```
-python glados-cli.py -q [--title="Title"] [--tags="tags,for,experiment"]
-```
 
-Both the `--title` and `--tags` fields are optional. Not including both will display all experiments you have run.
+This will display all experiments with the given title with the following information about them:
 
-Experiments will display sorted by date, and their dates and ID's will be visible.
+- experiment status
+- tags
+- number of completed trials
+- total number of trials to run
 
-## Download Experiment Results:
+Not entering a title will display all of your experiments.
+
+## Download Experiment Results
 
 To download experiment results, use the `d` or `--download` option:
-```
+
+```sh
 python glados-cli.py -d <exp_id> [destination]
 ```
 

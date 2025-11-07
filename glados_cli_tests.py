@@ -1,5 +1,7 @@
 import glados_cli as gcli
+
 from unittest import mock
+from typing import *
 
 import os
 import io
@@ -23,10 +25,10 @@ class GladosCliTests(unittest.TestCase):
                     filepath = os.path.join(dirpath, filename)
                     zf.write(filepath, os.path.relpath(filepath, dirname))
         
-    def parse_args(self, args: list[str]) -> int:
+    def parse_args(self, args: List[str]) -> int:
         return gcli.parse_args(self.request_manager, args, stdout=self.out, stderr=self.err)
     
-    def _assert_status_code(self, args: list[str], expected_code: int) -> None:
+    def _assert_status_code(self, args: List[str], expected_code: int) -> None:
         status = self.parse_args(args)
         self.assertEqual(status, expected_code)
         
@@ -203,7 +205,24 @@ class GladosCliTests(unittest.TestCase):
         self._assert_status_code(['-t', 'valid_token', '-s', 'exp123'], gcli.EX_UNKNOWN)
         self.request_manager.authenticate.assert_called_with('valid_token')
         self.request_manager.get_experiment_status.assert_called_with('exp123')
-        self._assert_in_error('other')        
+        self._assert_in_error('other')
+        
+    def test_query_one_experiment(self):
+        self.request_manager.authenticate.return_value = True
+        self.request_manager.query_experiments.return_value = {
+            'success': True,
+            'matches': [
+                {'id': 'exp1', 
+                 'name': 'Test Experiment', 
+                 'tags': ['tag1', 'tag2'],
+                 'status': 'completed',
+                 'started_on': '2024-01-01T12:00:00Z'},
+            ]
+        }
+        self._assert_status_code(['-t', 'valid_token', '-q', 'Test Experiment'], gcli.EX_SUCCESS)
+        self.request_manager.authenticate.assert_called_with('valid_token')
+        self.request_manager.query_experiments.assert_called_with('Test Experiment', 'valid_token')        
+        
     
 if __name__ == '__main__':
     unittest.main()
