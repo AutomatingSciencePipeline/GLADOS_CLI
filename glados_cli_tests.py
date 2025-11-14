@@ -48,6 +48,7 @@ class GladosCliTests(unittest.TestCase):
     
     def test_mutually_exclusive_parameters(self) -> None:
         # Test that -s and -z cannot be used together
+        self.request_manager.authenticate.return_value = True
         self._assert_status_code(['-q', 'some_value', '-z', 'another_value'], gcli.EX_PARSE_ERROR)
         self._assert_status_code(['-d', 'some_value', '-q', 'another_value'], gcli.EX_PARSE_ERROR)
         self._assert_status_code(['-z', 'some_value', '-d', 'another_value'], gcli.EX_PARSE_ERROR)
@@ -179,7 +180,31 @@ class GladosCliTests(unittest.TestCase):
         }
         self._assert_status_code(['-t', 'valid_token', '-q', 'Test Experiment'], gcli.EX_SUCCESS)
         self.request_manager.authenticate.assert_called_with('valid_token')
-        self.request_manager.query_experiments.assert_called_with('Test Experiment', 'valid_token')        
+        self.request_manager.query_experiments.assert_called_with('Test Experiment', 'valid_token')     
+        self._assert_in_output('Test Experiment')
+    
+    def test_query_multiple_experiments(self):
+        self.request_manager.authenticate.return_value = True
+        self.request_manager.query_experiments.return_value = {
+            'success': True,
+            'matches': [
+                {'id': 'exp1', 
+                 'name': 'Test Experiment 1', 
+                 'tags': ['tag1'],
+                 'status': 'running',
+                 'started_on': 1762488593221},
+                {'id': 'exp2', 
+                 'name': 'Test Experiment 2', 
+                 'tags': ['tag2'],
+                 'status': 'completed',
+                 'started_on': 1762489593221},
+            ]
+        }
+        self._assert_status_code(['-t', 'valid_token', '-q', 'Test Experiment'], gcli.EX_SUCCESS)
+        self.request_manager.authenticate.assert_called_with('valid_token')
+        self.request_manager.query_experiments.assert_called_with('Test Experiment', 'valid_token')
+        self._assert_in_output('Test Experiment 1')
+        self._assert_in_output('Test Experiment 2')
         
     
 if __name__ == '__main__':

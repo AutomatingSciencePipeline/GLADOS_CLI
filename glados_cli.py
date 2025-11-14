@@ -183,8 +183,12 @@ def parse_args(request_manager: RequestManager, args: Optional[typing.Sequence[s
     parser.add_argument('--download', '-d', type=str, help='Download the results of a completed experiment. Cannot be used with -z or -s.')
     
     parsed = parser.parse_args(args)
-
-    if not parsed.token:
+    
+    # TODO: this section probably needs to be refactored!
+    if not exactly_one([parsed.upload, parsed.query, parsed.download]) and not parsed.generate_token:
+        perror("error: Exactly one of -z, -q, or -d must be provided.")
+        return EX_PARSE_ERROR
+    elif not parsed.token and not parsed.generate_token:
         if not os.path.exists(".token.glados"):
             perror("error: No token provided and no stored token found. Please generate a token using --generate-token.")
             return EX_INVALID_TOKEN
@@ -195,10 +199,6 @@ def parse_args(request_manager: RequestManager, args: Optional[typing.Sequence[s
         generate_token(request_manager)
         sys.stdout, sys.stderr = _out, _err
         return EX_SUCCESS
-    
-    if not exactly_one([parsed.upload, parsed.query, parsed.download]):
-        perror("error: Exactly one of -z, -q, or -d must be provided.")
-        return EX_PARSE_ERROR
     
     if not request_manager.authenticate(parsed.token):
         perror("error: Cannot authenticate token - check your internet connection and token.")
