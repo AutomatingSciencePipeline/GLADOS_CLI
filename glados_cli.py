@@ -24,6 +24,7 @@ EX_INVALID_TOKEN = 1
 EX_NOTFOUND = 2
 EX_INVALID_EXP_FORMAT = 3
 EX_NOT_DONE = 4
+EX_EXP_FAILED = 5
 
 class RequestManager(object):
     def __init__(self):
@@ -158,7 +159,8 @@ def download_experiment(request_manager: RequestManager, experiment_id: str) -> 
     if not results.get("success", False):
         msg, status = {
             'not_found': ("Experiment not found.", EX_NOTFOUND),
-            'not_done': ("Experiment is still running.", EX_NOT_DONE)
+            'not_done': ("Experiment is still running.", EX_NOT_DONE),
+            'exp_failed': ("Experiment did not complete successfully.", EX_EXP_FAILED)
         }[results.get("error")]
         perror(msg)
         return status
