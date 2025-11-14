@@ -154,6 +154,9 @@ def query_experiments(request_manager: RequestManager, title: str):
 
 def download_experiment(request_manager: RequestManager, experiment_id: str) -> int:
     results = request_manager.download_experiment_results(experiment_id)
+    if not results.get("success", False):
+        perror("Experiment not found.")
+        return EX_NOTFOUND
     print(f"Experiment results downloaded successfully to './{results['files'][0]['name']}'.")
     return EX_SUCCESS
 
