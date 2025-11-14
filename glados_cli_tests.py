@@ -206,6 +206,17 @@ class GladosCliTests(unittest.TestCase):
         self._assert_in_output('Test Experiment 1')
         self._assert_in_output('Test Experiment 2')
         
+    def test_query_no_experiments(self):
+        self.request_manager.authenticate.return_value = True
+        self.request_manager.query_experiments.return_value = {
+            'success': True,
+            'matches': []
+        }
+        self._assert_status_code(['-t', 'valid_token', '-q', 'Nonexistent Experiment'], gcli.EX_NOTFOUND)
+        self.request_manager.authenticate.assert_called_with('valid_token')
+        self.request_manager.query_experiments.assert_called_with('Nonexistent Experiment', 'valid_token')
+        self._assert_in_error('No experiments found')
+        
     
 if __name__ == '__main__':
     unittest.main()

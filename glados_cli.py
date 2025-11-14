@@ -137,6 +137,9 @@ def upload_and_start_experiment(request_manager: RequestManager, experiment_path
 
 def query_experiments(request_manager: RequestManager, title: str):
     results = request_manager.query_experiments(title, get_token())
+    if not results["matches"]:
+        perror("error: No experiments found.")
+        return EX_NOTFOUND
     print("Matches:")
     for index, match in enumerate(results["matches"]):
         s = match["started_on"] / 1000.0
