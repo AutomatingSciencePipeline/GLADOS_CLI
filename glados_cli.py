@@ -94,7 +94,7 @@ class RequestManager(object):
             perror(f'{error}')
         return res.json()
     
-    def download_experiment_results(self, experiment_id: str, destination_path: str) -> Dict[str, typing.Any]:
+    def download_experiment_results(self, experiment_id: str) -> Dict[str, typing.Any]:
         pass  # Implementation for downloading experiment results
     
 def perror(*args, **kwargs) -> None:
@@ -152,6 +152,11 @@ def query_experiments(request_manager: RequestManager, title: str):
         print(f"Time Started: {time_started}\n")
     return EX_SUCCESS
 
+def download_experiment(request_manager: RequestManager, experiment_id: str) -> int:
+    results = request_manager.download_experiment_results(experiment_id)
+    print(f"Experiment results downloaded successfully to './{results['files'][0]['name']}'.")
+    return EX_SUCCESS
+
 def validate_experiment_file(filepath: str) -> Optional[str]:
     if not zipfile.is_zipfile(filepath):
         return f"'{filepath}' is in an invalid format."
@@ -198,18 +203,16 @@ def parse_args(request_manager: RequestManager, args: Optional[typing.Sequence[s
         else:
             parsed.token = get_token()
     
-    if parsed.generate_token:
-        generate_token(request_manager)
-        sys.stdout, sys.stderr = _out, _err
-        return EX_SUCCESS
-    
     if not request_manager.authenticate(parsed.token):
         perror("error: Cannot authenticate token - check your internet connection and token.")
         return EX_INVALID_TOKEN
     
     # Authentication successful, proceed with requested operation
     result = EX_SUCCESS
-    if parsed.token:
+    if parsed.generate_token:
+        generate_token(request_manager)
+        
+    elif parsed.token:
         result = store_token(parsed.token)
         if result != EX_SUCCESS:
             perror("error: An unexpected error occurred while storing the token.")
@@ -218,6 +221,8 @@ def parse_args(request_manager: RequestManager, args: Optional[typing.Sequence[s
         result = upload_and_start_experiment(request_manager, parsed.upload)
     if parsed.query:
         result = query_experiments(request_manager, parsed.query)
+    if parsed.download:
+        result = download_experiment(request_manager, parsed.download)
     
     # Restore original stdout and stderr
     sys.stdout, sys.stderr = _out, _err

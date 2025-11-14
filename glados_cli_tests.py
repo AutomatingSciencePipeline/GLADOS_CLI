@@ -216,6 +216,22 @@ class GladosCliTests(unittest.TestCase):
         self.request_manager.authenticate.assert_called_with('valid_token')
         self.request_manager.query_experiments.assert_called_with('Nonexistent Experiment', 'valid_token')
         self._assert_in_error('No experiments found')
+    
+    def test_download_experiment_results(self):
+        self.request_manager.authenticate.return_value = True
+        self.request_manager.download_experiment_results.return_value = {
+            'success': True,
+            'files': [
+                {
+                    'name': 'downloaded_results.zip',
+                    'content': b'PK\x03\x04...'  # Simulated binary content of a zip file
+                }
+            ]
+        }
+        self._assert_status_code(['-t', 'valid_token', '-d', 'exp123'], gcli.EX_SUCCESS)
+        self.request_manager.authenticate.assert_called_with('valid_token')
+        self.request_manager.download_experiment_results.assert_called_with('exp123')
+        self._assert_in_output('downloaded_results.zip')
         
     
 if __name__ == '__main__':
