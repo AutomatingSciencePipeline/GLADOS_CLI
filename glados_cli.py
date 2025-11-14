@@ -23,6 +23,7 @@ EX_SUCCESS = 0
 EX_INVALID_TOKEN = 1
 EX_NOTFOUND = 2
 EX_INVALID_EXP_FORMAT = 3
+EX_NOT_DONE = 4
 
 class RequestManager(object):
     def __init__(self):
@@ -155,8 +156,13 @@ def query_experiments(request_manager: RequestManager, title: str):
 def download_experiment(request_manager: RequestManager, experiment_id: str) -> int:
     results = request_manager.download_experiment_results(experiment_id)
     if not results.get("success", False):
-        perror("Experiment not found.")
-        return EX_NOTFOUND
+        msg, status = {
+            'not_found': ("Experiment not found.", EX_NOTFOUND),
+            'not_done': ("Experiment is still running.", EX_NOT_DONE)
+        }[results.get("error")]
+        perror(msg)
+        return status
+    
     print(f"Experiment results downloaded successfully to './{results['files'][0]['name']}'.")
     return EX_SUCCESS
 

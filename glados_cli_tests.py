@@ -241,6 +241,17 @@ class GladosCliTests(unittest.TestCase):
         self._assert_status_code(['-t', 'valid_token', '-d', 'exp123'], gcli.EX_NOTFOUND)
         self.request_manager.authenticate.assert_called_with('valid_token')
         self.request_manager.download_experiment_results.assert_called_with('exp123')
+        self._assert_in_error("not found")
+        
+    def test_download_experiment_still_running(self):
+        self.request_manager.download_experiment_results.return_value = {
+            'success': False,
+            'error': 'not_done'
+        }
+        self._assert_status_code(['-t', 'valid_token', '-d', 'exp123'], gcli.EX_NOT_DONE)
+        self.request_manager.authenticate.assert_called_with('valid_token')
+        self.request_manager.download_experiment_results.assert_called_with('exp123')
+        self._assert_in_error("still running")
         
     
 if __name__ == '__main__':
