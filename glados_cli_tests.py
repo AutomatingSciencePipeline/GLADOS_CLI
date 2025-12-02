@@ -175,12 +175,14 @@ class GladosCliTests(unittest.TestCase):
                  'name': 'Test Experiment', 
                  'tags': ['tag1', 'tag2'],
                  'status': 'completed',
-                 'started_on': 1762488593221},
+                 'started_on': 1762488593221,
+                 'current_permutation': 50,
+                 'total_permutations': 100},
             ]
         }
         self._assert_status_code(['-t', 'valid_token', '-q', 'Test Experiment'], gcli.EX_SUCCESS)
         self.request_manager.authenticate.assert_called_with('valid_token')
-        self.request_manager.query_experiments.assert_called_with('Test Experiment', 'valid_token')     
+        self.request_manager.query_experiments.assert_called_with('Test Experiment')     
         self._assert_in_output('Test Experiment')
     
     def test_query_multiple_experiments(self):
@@ -192,17 +194,21 @@ class GladosCliTests(unittest.TestCase):
                  'name': 'Test Experiment 1', 
                  'tags': ['tag1'],
                  'status': 'running',
-                 'started_on': 1762488593221},
+                 'started_on': 1762488593221,
+                 'current_permutation': 70,
+                 'total_permutations': 100},
                 {'id': 'exp2', 
                  'name': 'Test Experiment 2', 
                  'tags': ['tag2'],
                  'status': 'completed',
-                 'started_on': 1762489593221},
+                 'started_on': 1762489593221,
+                 'current_permutation': 80,
+                 'total_permutations': 100},
             ]
         }
         self._assert_status_code(['-t', 'valid_token', '-q', 'Test Experiment'], gcli.EX_SUCCESS)
         self.request_manager.authenticate.assert_called_with('valid_token')
-        self.request_manager.query_experiments.assert_called_with('Test Experiment', 'valid_token')
+        self.request_manager.query_experiments.assert_called_with('Test Experiment')
         self._assert_in_output('Test Experiment 1')
         self._assert_in_output('Test Experiment 2')
         
@@ -214,7 +220,7 @@ class GladosCliTests(unittest.TestCase):
         }
         self._assert_status_code(['-t', 'valid_token', '-q', 'Nonexistent Experiment'], gcli.EX_NOTFOUND)
         self.request_manager.authenticate.assert_called_with('valid_token')
-        self.request_manager.query_experiments.assert_called_with('Nonexistent Experiment', 'valid_token')
+        self.request_manager.query_experiments.assert_called_with('Nonexistent Experiment')
         self._assert_in_error('No experiments found')
     
     def test_download_experiment_results(self):
