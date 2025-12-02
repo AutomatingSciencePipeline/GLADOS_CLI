@@ -138,7 +138,7 @@ def upload_and_start_experiment(request_manager: RequestManager, experiment_path
 
 
 def query_experiments(request_manager: RequestManager, title: str):
-    results = request_manager.query_experiments(title, get_token())
+    results = request_manager.query_experiments(title)
     if not results["matches"]:
         perror("error: No experiments found.")
         return EX_NOTFOUND
@@ -151,7 +151,8 @@ def query_experiments(request_manager: RequestManager, title: str):
         print("***********************************************")
         print(f"ID: {match['id']}")
         print(f"Status: {match['status']}")
-        print(f"Time Started: {time_started}\n")
+        print(f"Time Started: {time_started}")
+        print(f"Trials: {match['current_permutation']}/{match['total_permutations']} Completed\n")
     return EX_SUCCESS
 
 def download_experiment(request_manager: RequestManager, experiment_id: str) -> int:
@@ -204,7 +205,7 @@ def parse_args(request_manager: RequestManager, args: Optional[typing.Sequence[s
     parsed = parser.parse_args(args)
     
     # TODO: this section probably needs to be refactored!
-    if not exactly_one([parsed.upload, parsed.query, parsed.download]) and not parsed.generate_token:
+    if not exactly_one([parsed.upload, parsed.query, parsed.download]) and not parsed.generate_token and not parsed.token:
         perror("error: Exactly one of -z, -q, or -d must be provided.")
         return EX_PARSE_ERROR
     elif not parsed.token and not parsed.generate_token:
@@ -213,20 +214,19 @@ def parse_args(request_manager: RequestManager, args: Optional[typing.Sequence[s
             return EX_INVALID_TOKEN
         else:
             parsed.token = get_token()
-    
-    if not request_manager.authenticate(parsed.token):
-        perror("error: Cannot authenticate token - check your internet connection and token.")
-        return EX_INVALID_TOKEN
-    
-    # Authentication successful, proceed with requested operation
-    result = EX_SUCCESS
+            
     if parsed.generate_token:
         generate_token(request_manager)
-        
     elif parsed.token:
         result = store_token(parsed.token)
         if result != EX_SUCCESS:
             perror("error: An unexpected error occurred while storing the token.")
+        if not request_manager.authenticate(parsed.token):
+            perror("error: Cannot authenticate token - check your internet connection and token.")
+            return EX_INVALID_TOKEN
+    
+    # Authentication successful, proceed with requested operation
+    result = EX_SUCCESS
         
     if parsed.upload:
         result = upload_and_start_experiment(request_manager, parsed.upload)
