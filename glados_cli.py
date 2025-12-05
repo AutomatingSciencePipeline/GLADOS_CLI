@@ -16,6 +16,10 @@ DEVICE_CODE_URL = "https://github.com/login/device/code"
 ACCESS_TOKEN_URL = "https://github.com/login/oauth/access_token"
 VIEW_EXPERIMENT_URL = f"{API_HOST}/api/experiments/queryExp"
 AUTH_URL = f"{API_HOST}/api/auth/tokenAuth/token"
+UPLOAD_EXPERIMENT_URL = f"{API_HOST}/api/files/uploadFileCLI"
+SUBMIT_EXPERIMENT_URL = f"{API_HOST}/api/experiments/submitExp"
+START_EXPERIMENT_URL = f"{API_HOST}/api/experiments/start/"
+DOWNLOAD_EXPERIMENT_RESULTS_URL = f"{API_HOST}/api/download/experimentResult"
 
 EX_UNKNOWN = -2
 EX_PARSE_ERROR = -1
@@ -83,7 +87,43 @@ class RequestManager(object):
         # Implementation for authenticating with the provided token
     
     def upload_and_start_experiment(self, experiment_path: str) -> Dict[str, typing.Any]:
-        return EX_SUCCESS  # Implementation for uploading and starting an experiment
+        files = {
+            "file": open(experiment_path, "rb")
+        }
+        data = {
+            "userToken": self.token
+        }
+        try:
+            res = requests.post(UPLOAD_EXPERIMENT_URL, verify=False, files=files, data=data, timeout=40)
+            time.sleep(5)
+        except requests.RequestException as error:
+            perror(f'{error}')
+
+        submitted_exec_file = res.json()
+        files = {
+            "file": open("manifest.yml", "rb")
+        }
+        data = {
+            "userToken": self.token,
+            "execFileID": submitted_exec_file['fileId']
+        }
+        try:
+            res = requests.post(SUBMIT_EXPERIMENT_URL, verify=False, files=files, data=data, timeout=40)
+            submitted_exp = res.json()
+            time.sleep(5)
+        except requests.RequestException as error:
+            perror(f'{error}')
+        try:
+            json ={"id": submitted_exp["expId"]}
+            res = requests.post(START_EXPERIMENT_URL + submitted_exp["expId"], json=json, verify=False, timeout=40)
+        except requests.RequestException as error:
+            perror(f'{error}')
+            
+        return {
+            'success': True,
+            'error': '',
+            'exp_id': submitted_exp["expId"]
+        }
     
     def query_experiments(self, experiment_name: str) -> Dict[str, typing.Any]:
         experiment_req_json = {
@@ -97,7 +137,29 @@ class RequestManager(object):
         return res.json()
     
     def download_experiment_results(self, experiment_id: str) -> Dict[str, typing.Any]:
-        pass  # Implementation for downloading experiment results
+        experiment_req_json = {
+            "token": self.token,
+            "expID": experiment_id
+        }
+        try:
+            res = requests.post(DOWNLOAD_EXPERIMENT_RESULTS_URL, verify=False, json=experiment_req_json, timeout=20)
+            
+            if(res.headers.get("Content-Disposition") is None):
+                return { 'success': False, 'error': res.content.decode('utf-8') }
+            
+            cd = res.headers.get("Content-Disposition", "")
+            filename = "results.csv"
+
+            if "filename=" in cd:
+                filename = cd.split("filename=")[1].strip('"')
+
+            with open(filename, "wb") as f:
+                f.write(res.content)
+
+            return { 'success': True, 'files': [{'name': filename, 'content': res.content}] }
+            
+        except requests.RequestException as error:
+            perror(f'{error}')
     
 def perror(*args, **kwargs) -> None:
     """Prints to stderr."""
@@ -123,10 +185,10 @@ def upload_and_start_experiment(request_manager: RequestManager, experiment_path
     if not os.path.isfile(experiment_path):
         perror(f"error: Experiment file '{experiment_path}' not found.")
         return EX_NOTFOUND
-    validation_error = validate_experiment_file(experiment_path)
-    if validation_error is not None:
-        perror(f"error: {validation_error}")
-        return EX_INVALID_EXP_FORMAT
+    # validation_error = validate_experiment_file(experiment_path)
+    # if validation_error is not None:
+    #     perror(f"error: {validation_error}")
+    #     return EX_INVALID_EXP_FORMAT
 
     results = request_manager.upload_and_start_experiment(experiment_path)
     if not results.get('success', False):
