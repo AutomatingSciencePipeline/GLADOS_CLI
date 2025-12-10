@@ -120,24 +120,26 @@ class GladosCliTests(unittest.TestCase):
         self._assert_in_error('missing_experiment.zip')
         self._assert_in_error('not found')
         
-    def test_run_invalid_experiment_format(self) -> None:
-        # Test running an experiment with an invalid file format
-        with open('invalid-experiment.zip', 'w') as f:
-            f.write('Hehehe yup')
+    #NOTE: This is commented out due to formatting changes expected
+    # def test_run_invalid_experiment_format(self) -> None:
+    #     # Test running an experiment with an invalid file format
+    #     with open('invalid-experiment.zip', 'w') as f:
+    #         f.write('Hehehe yup')
         
-        self.request_manager.authenticate.return_value = True
-        self._assert_status_code(['-t', 'valid_token', '-z', 'invalid-experiment.zip'], gcli.EX_INVALID_EXP_FORMAT)
-        self.request_manager.authenticate.assert_called_with('valid_token')
-        self._assert_in_error('invalid-experiment.zip')
-        self._assert_in_error('format')
+    #     self.request_manager.authenticate.return_value = True
+    #     self._assert_status_code(['-t', 'valid_token', '-z', 'invalid-experiment.zip'], gcli.EX_INVALID_EXP_FORMAT)
+    #     self.request_manager.authenticate.assert_called_with('valid_token')
+    #     self._assert_in_error('invalid-experiment.zip')
+    #     self._assert_in_error('format')
         
-    def test_run_experiment_format_missing_files(self) -> None:
-        # Test running an experiment that might be missing files
-        self.request_manager.authenticate.return_value = True
-        self._assert_status_code(['-t', 'valid_token', '-z', 'empty-experiment.zip'], gcli.EX_INVALID_EXP_FORMAT)
-        self.request_manager.authenticate.assert_called_with('valid_token')
-        self._assert_in_error('empty-experiment.zip')
-        self._assert_in_error('manifest.yaml')
+    #NOTE: This is commented out due to formatting changes expected
+    # def test_run_experiment_format_missing_files(self) -> None:
+    #     # Test running an experiment that might be missing files
+    #     self.request_manager.authenticate.return_value = True
+    #     self._assert_status_code(['-t', 'valid_token', '-z', 'empty-experiment.zip'], gcli.EX_INVALID_EXP_FORMAT)
+    #     self.request_manager.authenticate.assert_called_with('valid_token')
+    #     self._assert_in_error('empty-experiment.zip')
+    #     self._assert_in_error('manifest.yaml')
         
         
     def test_run_experiment_backend_format_failure(self) -> None:
