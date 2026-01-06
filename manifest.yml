@@ -1,0 +1,96 @@
+# This is the config file required to be in the same directory as as an
+# experiment that is submitted from the command line. Consult documentation
+# on experiment compatability and more information on these parameters a
+# https://automatingsciencepipeline.github.io/Monorepo/tutorial/usage/
+
+#CONFIGURATION:
+
+# This allows you to define hyperparameters for each run. Multiple can be defined.
+# Example:
+# - name: x
+#     default: "-1"
+#     min: "1"
+#     max: "10"
+#     step: "1"
+#     type: integer
+#     useDefault: false
+
+# - name: "values",
+#       default: "-1",
+#       values: [
+#         "a",
+#         "b"
+#       ],
+#       type: "stringlist",
+#       useDefault: false
+# See https://automatingsciencepipeline.github.io/Monorepo/tutorial/usage/#information-tab
+# for full list of hyperparameters
+
+hyperparameters:
+  - name: x
+    default: "-1"
+    min: "1"
+    max: "10"
+    step: "1"
+    type: integer
+    useDefault: false
+
+  - name: y
+    default: "-1"
+    min: "1"
+    max: "10"
+    step: "1"
+    type: integer
+    useDefault: false
+# The experiment name. 
+# Example: "Evolutionary Aglorithm Experiment"
+name: "Good3"
+# This is the description of the experiment. 
+# Example: "Experiment for CSSE490 Homework 4."
+description: "Hi"
+# These are the tags which can be defined for an experiment, allowing for better filtering on the web app.
+# Example: ["Neural Network", "ECE497"]
+tags: ["Neural Network", "ECE497"]
+# A folder or file included in the downloadable Project Zip after experiment completion.
+# Example: "test.csv"
+trialExtraFile: "AddNumResult.csv"
+# The CSV file captured as the experiment result.
+# Example: "test.csv"
+trialResult: "AddNumResult.csv"
+# This allows you to specific the line number of a trial result.
+# Example: 0
+trialResultLineNumber: 0
+# This allows you to include a scatter plot in the downloadable Project Zip
+# Example: true
+scatter: true
+# If a scatter plot is included, this defined the independent variable. Leave blank if not included.
+# Example: "y" for included, "" for not
+scatterIndVar: "x"
+# If a scatter plot is included, this defined the dependent variable. Leave blank if not included.
+# Example: "x" for included, "" for not
+scatterDepVar: "y"
+# This tab allows defining a text block appended to every generated .ini config file. 
+# Example: "" for default behavior
+dumbTextArea: ""
+# The duration before the experiment automatically times out (seconds)
+# Example: 600
+timeout: 100
+# Select this option to store logs from the experiment runner pod. It is recommended to always set this to true
+# Example: true
+keepLogs: true
+# This allows an email to be sent following experiment completion with number of passed and failed trials
+# Example: true
+sendEmail: false
+# Define number of workers used for experiment
+# Example: 1
+workers: 1
+# If using a zip experiment, specify the main executable filename.
+# Example: "test.py" if using zip, "" if not
+experimentExecutable: "test.py"
+# This attribute should remain blank.
+# Example: ""
+file: ""
+# This attribute should remain as CREATED.
+# Example: "CREATED"
+status: "CREATED"
+
