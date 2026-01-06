@@ -120,28 +120,6 @@ class GladosCliTests(unittest.TestCase):
         self._assert_in_error('missing_experiment.zip')
         self._assert_in_error('not found')
         
-    #NOTE: This is commented out due to formatting changes expected
-    # def test_run_invalid_experiment_format(self) -> None:
-    #     # Test running an experiment with an invalid file format
-    #     with open('invalid-experiment.zip', 'w') as f:
-    #         f.write('Hehehe yup')
-        
-    #     self.request_manager.authenticate.return_value = True
-    #     self._assert_status_code(['-t', 'valid_token', '-z', 'invalid-experiment.zip'], gcli.EX_INVALID_EXP_FORMAT)
-    #     self.request_manager.authenticate.assert_called_with('valid_token')
-    #     self._assert_in_error('invalid-experiment.zip')
-    #     self._assert_in_error('format')
-        
-    #NOTE: This is commented out due to formatting changes expected
-    # def test_run_experiment_format_missing_files(self) -> None:
-    #     # Test running an experiment that might be missing files
-    #     self.request_manager.authenticate.return_value = True
-    #     self._assert_status_code(['-t', 'valid_token', '-z', 'empty-experiment.zip'], gcli.EX_INVALID_EXP_FORMAT)
-    #     self.request_manager.authenticate.assert_called_with('valid_token')
-    #     self._assert_in_error('empty-experiment.zip')
-    #     self._assert_in_error('manifest.yaml')
-        
-        
     def test_run_experiment_backend_format_failure(self) -> None:
         # Test running an experiment where the backend's format validation fails
         self.request_manager.authenticate.return_value = True
@@ -271,8 +249,69 @@ class GladosCliTests(unittest.TestCase):
         self.request_manager.download_experiment_results.assert_called_with('exp123')
         self._assert_in_error("did not complete successfully")
         
+    def test_download_all_experiment_results(self):
+        self.request_manager.authenticate.return_value = True
+        self.request_manager.download_all.return_value = {
+            'success': True,
+            'files': [
+                {
+                    'name': 'downloaded_results.zip',
+                    'content': b'PK\x03\x04...'  # Simulated binary content of a zip file
+                }
+            ]
+        }
+        self._assert_status_code(['-t', 'valid_token', '-da', 'exp123'], gcli.EX_SUCCESS)
+        self.request_manager.authenticate.assert_called_with('valid_token')
+        self.request_manager.download_all.assert_called_with('exp123')
+        self._assert_in_output('All experiment artifacts downloaded successfully to current directory.')
         
+    def test_download_all_experiment_not_found(self):
+        self.request_manager.download_all.return_value = {
+            'success': False,
+            'error': 'not_found'
+        }
+        self._assert_status_code(['-t', 'valid_token', '-da', 'exp123'], gcli.EX_NOTFOUND)
+        self.request_manager.authenticate.assert_called_with('valid_token')
+        self.request_manager.download_all.assert_called_with('exp123')
+        self._assert_in_error("not found")
         
+    def test_download_all_experiment_still_running(self):
+        self.request_manager.download_all.return_value = {
+            'success': False,
+            'error': 'not_done'
+        }
+        self._assert_status_code(['-t', 'valid_token', '-da', 'exp123'], gcli.EX_NOT_DONE)
+        self.request_manager.authenticate.assert_called_with('valid_token')
+        self.request_manager.download_all.assert_called_with('exp123')
+        self._assert_in_error("still running")
+        
+    def test_download_all_experiment_failed(self):
+        self.request_manager.download_all.return_value = {
+            'success': False,
+            'error': 'exp_failed'
+        }
+        self._assert_status_code(['-t', 'valid_token', '-da', 'exp123'], gcli.EX_EXP_FAILED)
+        self.request_manager.authenticate.assert_called_with('valid_token')
+        self.request_manager.download_all.assert_called_with('exp123')
+        self._assert_in_error("did not complete successfully")
+        
+    def test_cli_update_success(self):
+        self.request_manager.update.return_value = {
+            "success": True,
+            "error": False
+        }
+        self._assert_status_code(['--update'], gcli.UPDATE_SUCCEED)
+        self.request_manager.update.assert_called_once()
+        self._assert_in_output("Downloaded most up-to-date CLI successfully")     
+        
+    def test_cli_update_failure(self):
+        self.request_manager.update.return_value = {
+            "success": False,
+            "error": "network"
+        }
+        self._assert_status_code(['-u'], gcli.UPDATE_FAIL)
+        self.request_manager.update.assert_called_once()
+        self._assert_in_output("Unable to download most up-to-date version")
     
 if __name__ == '__main__':
     unittest.main()
