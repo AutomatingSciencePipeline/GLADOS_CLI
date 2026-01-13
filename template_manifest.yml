@@ -1,0 +1,102 @@
+# This is the config file required to be in the same directory as as an
+# experiment that is submitted from the command line. Guidance on what to put at each attribute is also included
+# as comments.
+
+#CONFIGURATION:
+
+# REQUIRED: This allows you to define parameters for each run. Multiple can be defined- in yaml files, such a list can occur through the "-" char.
+# Example 1: Integer parameter- a parameter that is an integer- min, max, and step must be integers, min < max, step >= 0.
+# It is recommended to keep default at -1 and useDefault at false to test every permutations possible.
+# - name: x
+#     default: "-1"
+#     min: "1" 
+#     max: "10"
+#     step: "1"
+#     type: integer
+#     useDefault: false
+# Example 2: Stringlist parameter- a parameter that is a list of strings- values must be a list composed of strings.
+# It is recommended to keep default at -1 and useDefault at false to test every permutations possible.
+# - name: example
+#     default: "-1"
+#     values: ["a", "b"]
+#     type: stringlist
+#     useDefault: false
+# Example 3: Float parameter- a parameter that is a float- min, max, and step must be floats, min < max, step >= 0.
+# It is recommended to keep default at -1 and useDefault at false to test every permutations possible.
+# - name: x
+#     default: "-1"
+#     min: "1.5"
+#     max: "10.5"
+#     step: "1.0"
+#     type: float
+#     useDefault: false
+# Example 4: Boolean parameter- a parameter that is a boolean i.e. true or false. It is recommended
+# that the default is set to true,  so the variable alternates from True to False on each trial
+# - name: values2
+#     default: true
+#     useDefault: true
+#     type: bool
+# Example 5: Paramgroup parameter- a parameter type that allows for access to variables via a dictionary.
+# It is recommended to keep default at -1 and useDefault at false to test every permutations possible.
+# - name: nums
+#     default: -1
+#     params: {}
+#     type: paramgroup
+#     useDefault: false
+#     values: {x: [10, 20, 1, 2, 5, 15], y: [10, 20, 1, 2, 5, 15]}
+
+hyperparameters:
+  - name: ""
+    default: ""
+    min: ""
+    max: ""
+    step: ""
+    type: 
+    useDefault: 
+
+# REQUIRED: (STRING) The experiment name. 
+# Example: "Evolutionary Aglorithm Experiment"
+name: ""
+# OPTIONAL: (STRING) This is the description of the experiment. 
+# Example: "Experiment for CSSE490 Homework 4."
+description: ""
+# OPTIONAL: (LIST OF STRINGS) These are the tags which can be defined for an experiment, allowing for better filtering on the web app.
+# Example: ["Neural Network", "ECE497"]
+tags: []
+# OPTIONAL: (STRING) A folder or file included in the downloadable Project Zip after experiment completion.
+# Example: "test.csv"
+trialExtraFile: ""
+# REQUIRED: (STRING) The CSV file captured as the experiment result.
+# Example: "test.csv"
+trialResult: ""
+# REQUIRED: (INT) This allows you to specific the line number of a trial result. Must be 0 or greater.
+# Example: 0
+trialResultLineNumber: 0
+# REQUIRED: (BOOLEAN) This allows you to include a scatter plot in the downloadable Project Zip
+# Example: true
+scatter: false
+# REQUIRED IF SCATTER IS TRUE: (STRING) If a scatter plot is included, this defined the independent variable. Leave blank if not included.
+# Example: "y" for included, "" for not
+scatterIndVar: ""
+# REQUIRED IF SCATTER IS TRUE: (STRING) If a scatter plot is included, this defined the dependent variable. Leave blank if not included.
+# Example: "x" for included, "" for not
+scatterDepVar: ""
+# OPTIONAL: (STRING) This tab allows defining a text block appended to every generated .ini config file. 
+# Example: "" for default behavior, ";testComment" use of semicolons to add comments
+dumbTextArea: ""
+# REQUIRED: (INT) The duration before the experiment automatically times out (seconds). Must be greater than 0.
+# Example: 600
+timeout: 600
+# REQUIRED: (BOOLEAN) Select this option to store logs from the experiment runner pod. It is recommended to always set this to true
+# Example: true
+keepLogs: true
+# REQUIRED: (BOOLEAN) This allows an email to be sent following experiment completion with number of passed and failed trials
+# Example: true
+sendEmail: false
+# REQUIRED: (INT) Define number of workers used for experiment. Must be greater than 0.
+# Example: 1
+workers: 1
+# REQUIRED FOR ZIP EXPERIMENTS: (STRING) If using a zip experiment, specify the main executable filename.
+# Example: "test.py" if using zip, "" if not
+experimentExecutable: ""
+
