@@ -2,6 +2,8 @@ import glados_cli as gcli
 
 from unittest import mock
 from typing import *
+from io import StringIO
+from contextlib import redirect_stdout
 
 import os
 import io
@@ -49,21 +51,21 @@ class GladosCliTests(unittest.TestCase):
     def test_mutually_exclusive_parameters(self) -> None:
         # Test that -s and -z cannot be used together
         self.request_manager.authenticate.return_value = True
-        self._assert_status_code(['-q', 'some_value', '-z', 'another_value'], gcli.EX_PARSE_ERROR)
-        self._assert_status_code(['-d', 'some_value', '-q', 'another_value'], gcli.EX_PARSE_ERROR)
-        self._assert_status_code(['-z', 'some_value', '-d', 'another_value'], gcli.EX_PARSE_ERROR)
-        self._assert_in_error("-z")
+        self._assert_status_code(['-q', 'some_value', '-r', 'another_value'], gcli.EX_PARSE_ERROR)
+        self._assert_status_code(['-d', 'some_value', 'some_value', '-q', 'another_value'], gcli.EX_PARSE_ERROR)
+        self._assert_status_code(['-r', 'some_value', '-d', 'another_value', 'another_value'], gcli.EX_PARSE_ERROR)
+        self._assert_in_error("-r")
         self._assert_in_error("-q")
         self._assert_in_error("-d")
         
     def test_with_invalid_token(self) -> None:
         # Test with an invalid token
         self.request_manager.authenticate.return_value = False
-        self._assert_status_code(['-t', 'invalid_token1', '-z', 'experiment.zip'], gcli.EX_INVALID_TOKEN)
+        self._assert_status_code(['-t', 'invalid_token1', '-r', 'experiment.zip'], gcli.EX_INVALID_TOKEN)
         self._assert_in_error("token")
         self._assert_status_code(['-t', 'invalid_token2', '-q', 'experiment_name'], gcli.EX_INVALID_TOKEN)
         self._assert_in_error("token")
-        self._assert_status_code(['-t', 'invalid_token3', '-d', 'experiment.zip'], gcli.EX_INVALID_TOKEN)
+        self._assert_status_code(['-t', 'invalid_token3', '-d', 'experiment.zip', 'example_path'], gcli.EX_INVALID_TOKEN)
         self._assert_in_error("token")
         self.request_manager.authenticate.assert_has_calls([
             mock.call('invalid_token1'), 
@@ -78,7 +80,7 @@ class GladosCliTests(unittest.TestCase):
             'error': '',
             'exp_id': 'exp123'
         }
-        self._assert_status_code(['-t', 'valid_token', '-z', 'valid-experiment.zip'], gcli.EX_SUCCESS)
+        self._assert_status_code(['-t', 'valid_token', '-r', 'valid-experiment.zip'], gcli.EX_SUCCESS)
         
         self.request_manager.authenticate.assert_called_with('valid_token')
         self.request_manager.upload_and_start_experiment.assert_called_with('valid-experiment.zip')
@@ -95,7 +97,7 @@ class GladosCliTests(unittest.TestCase):
             'error': '',
             'exp_id': 'expabc'
         }
-        self._assert_status_code(['-z', 'valid-experiment.zip'], gcli.EX_SUCCESS)
+        self._assert_status_code(['-r', 'valid-experiment.zip'], gcli.EX_SUCCESS)
         self.request_manager.authenticate.assert_called_with('valid_token')
         self.request_manager.upload_and_start_experiment.assert_called_with('valid-experiment.zip')
         self._assert_in_output('expabc')
@@ -115,7 +117,7 @@ class GladosCliTests(unittest.TestCase):
     def test_run_missing_experiment(self) -> None:
         # Test running a non-existent experiment file
         self.request_manager.authenticate.return_value = True
-        self._assert_status_code(['-t', 'valid_token', '-z', 'missing_experiment.zip'], gcli.EX_NOTFOUND)
+        self._assert_status_code(['-t', 'valid_token', '-r', 'missing_experiment.zip'], gcli.EX_NOTFOUND)
         self.request_manager.authenticate.assert_called_with('valid_token')
         self._assert_in_error('missing_experiment.zip')
         self._assert_in_error('not found')
@@ -128,7 +130,7 @@ class GladosCliTests(unittest.TestCase):
             'error': 'bad_format',
             'exp_id': ''
         }
-        self._assert_status_code(['-t', 'valid_token', '-z', 'valid-experiment.zip'], gcli.EX_INVALID_EXP_FORMAT)
+        self._assert_status_code(['-t', 'valid_token', '-r', 'valid-experiment.zip'], gcli.EX_INVALID_EXP_FORMAT)
         self.request_manager.authenticate.assert_called_with('valid_token')
         self.request_manager.upload_and_start_experiment.assert_called_with('valid-experiment.zip')
         self._assert_in_error('format')
@@ -141,7 +143,7 @@ class GladosCliTests(unittest.TestCase):
             'error': 'other',
             'exp_id': ''
         }
-        self._assert_status_code(['-t', 'valid_token', '-z', 'valid-experiment.zip'], gcli.EX_UNKNOWN)
+        self._assert_status_code(['-t', 'valid_token', '-r', 'valid-experiment.zip'], gcli.EX_UNKNOWN)
         self.request_manager.authenticate.assert_called_with('valid_token')
         self.request_manager.upload_and_start_experiment.assert_called_with('valid-experiment.zip')
         self._assert_in_error('other')
@@ -214,9 +216,9 @@ class GladosCliTests(unittest.TestCase):
                 }
             ]
         }
-        self._assert_status_code(['-t', 'valid_token', '-d', 'exp123'], gcli.EX_SUCCESS)
+        self._assert_status_code(['-t', 'valid_token', '-d', 'exp123', r'C:\Users\exampleUser\Downloads'], gcli.EX_SUCCESS)
         self.request_manager.authenticate.assert_called_with('valid_token')
-        self.request_manager.download_experiment_results.assert_called_with('exp123')
+        self.request_manager.download_experiment_results.assert_called_with('exp123', r'C:\Users\exampleUser\Downloads')
         self._assert_in_output('downloaded_results.zip')
         
     def test_download_experiment_not_found(self):
@@ -224,9 +226,9 @@ class GladosCliTests(unittest.TestCase):
             'success': False,
             'error': 'not_found'
         }
-        self._assert_status_code(['-t', 'valid_token', '-d', 'exp123'], gcli.EX_NOTFOUND)
+        self._assert_status_code(['-t', 'valid_token', '-d', 'exp123', r'C:\Users\exampleUser\Downloads'], gcli.EX_NOTFOUND)
         self.request_manager.authenticate.assert_called_with('valid_token')
-        self.request_manager.download_experiment_results.assert_called_with('exp123')
+        self.request_manager.download_experiment_results.assert_called_with('exp123', r'C:\Users\exampleUser\Downloads')
         self._assert_in_error("not found")
         
     def test_download_experiment_still_running(self):
@@ -234,9 +236,9 @@ class GladosCliTests(unittest.TestCase):
             'success': False,
             'error': 'not_done'
         }
-        self._assert_status_code(['-t', 'valid_token', '-d', 'exp123'], gcli.EX_NOT_DONE)
+        self._assert_status_code(['-t', 'valid_token', '-d', 'exp123', r'C:\Users\exampleUser\Downloads'], gcli.EX_NOT_DONE)
         self.request_manager.authenticate.assert_called_with('valid_token')
-        self.request_manager.download_experiment_results.assert_called_with('exp123')
+        self.request_manager.download_experiment_results.assert_called_with('exp123', r'C:\Users\exampleUser\Downloads')
         self._assert_in_error("still running")
         
     def test_download_experiment_failed(self):
@@ -244,9 +246,9 @@ class GladosCliTests(unittest.TestCase):
             'success': False,
             'error': 'exp_failed'
         }
-        self._assert_status_code(['-t', 'valid_token', '-d', 'exp123'], gcli.EX_EXP_FAILED)
+        self._assert_status_code(['-t', 'valid_token', '-d', 'exp123', r'C:\Users\exampleUser\Downloads'], gcli.EX_EXP_FAILED)
         self.request_manager.authenticate.assert_called_with('valid_token')
-        self.request_manager.download_experiment_results.assert_called_with('exp123')
+        self.request_manager.download_experiment_results.assert_called_with('exp123', r'C:\Users\exampleUser\Downloads')
         self._assert_in_error("did not complete successfully")
         
     def test_download_all_experiment_results(self):
@@ -260,19 +262,19 @@ class GladosCliTests(unittest.TestCase):
                 }
             ]
         }
-        self._assert_status_code(['-t', 'valid_token', '-da', 'exp123'], gcli.EX_SUCCESS)
+        self._assert_status_code(['-t', 'valid_token', '-da', 'exp123', r'C:\Users\exampleUser\Downloads'], gcli.EX_SUCCESS)
         self.request_manager.authenticate.assert_called_with('valid_token')
-        self.request_manager.download_all.assert_called_with('exp123')
-        self._assert_in_output('All experiment artifacts downloaded successfully to current directory.')
+        self.request_manager.download_all.assert_called_with('exp123', r'C:\Users\exampleUser\Downloads')
+        self._assert_in_output('All experiment artifacts downloaded successfully to C:\\Users\\exampleUser\\Downloads.')
         
     def test_download_all_experiment_not_found(self):
         self.request_manager.download_all.return_value = {
             'success': False,
             'error': 'not_found'
         }
-        self._assert_status_code(['-t', 'valid_token', '-da', 'exp123'], gcli.EX_NOTFOUND)
+        self._assert_status_code(['-t', 'valid_token', '-da', 'exp123', r'C:\Users\exampleUser\Downloads'], gcli.EX_NOTFOUND)
         self.request_manager.authenticate.assert_called_with('valid_token')
-        self.request_manager.download_all.assert_called_with('exp123')
+        self.request_manager.download_all.assert_called_with('exp123', r'C:\Users\exampleUser\Downloads')
         self._assert_in_error("not found")
         
     def test_download_all_experiment_still_running(self):
@@ -280,9 +282,9 @@ class GladosCliTests(unittest.TestCase):
             'success': False,
             'error': 'not_done'
         }
-        self._assert_status_code(['-t', 'valid_token', '-da', 'exp123'], gcli.EX_NOT_DONE)
+        self._assert_status_code(['-t', 'valid_token', '-da', 'exp123', r'C:\Users\exampleUser\Downloads'], gcli.EX_NOT_DONE)
         self.request_manager.authenticate.assert_called_with('valid_token')
-        self.request_manager.download_all.assert_called_with('exp123')
+        self.request_manager.download_all.assert_called_with('exp123', r'C:\Users\exampleUser\Downloads')
         self._assert_in_error("still running")
         
     def test_download_all_experiment_failed(self):
@@ -290,9 +292,9 @@ class GladosCliTests(unittest.TestCase):
             'success': False,
             'error': 'exp_failed'
         }
-        self._assert_status_code(['-t', 'valid_token', '-da', 'exp123'], gcli.EX_EXP_FAILED)
+        self._assert_status_code(['-t', 'valid_token', '-da', 'exp123', r'C:\Users\exampleUser\Downloads'], gcli.EX_EXP_FAILED)
         self.request_manager.authenticate.assert_called_with('valid_token')
-        self.request_manager.download_all.assert_called_with('exp123')
+        self.request_manager.download_all.assert_called_with('exp123', r'C:\Users\exampleUser\Downloads')
         self._assert_in_error("did not complete successfully")
         
     def test_cli_update_success(self):
@@ -312,6 +314,55 @@ class GladosCliTests(unittest.TestCase):
         self._assert_status_code(['-u'], gcli.UPDATE_FAIL)
         self.request_manager.update.assert_called_once()
         self._assert_in_output("Unable to download most up-to-date version")
+        
+    def test_manifest_no_errors(self):
+        gcli.check_manifest_format("test_manifests/test_manifest_no_errors.yml", False)
+        self._assert_in_output("")
+        
+    def test_manifest_string_errors(self):
+        buf = StringIO()
+        with redirect_stdout(buf):
+            result = gcli.check_manifest_format("test_manifests/test_manifest_string_errors.yml", True)
+        output = buf.getvalue()
+        self.assertEqual(result, gcli.EX_INVALID_EXP_FORMAT)
+        self.assertIn("name attribute in manifest.yml is empty, missing, or not a string.", output)
+        self.assertIn("trialResult attribute in manifest.yml is empty, missing, or not a string.", output)
+        self.assertIn("scatterIndVar attribute in manifest.yml is empty, missing, or not a string.", output)
+        self.assertIn("scatterDepVar attribute in manifest.yml is empty, missing, or not a string.", output)
+        self.assertIn("experimentExecutable attribute in manifest.yml is empty, missing, or not a string.", output)
+        
+    def test_manifest_int_errors(self):
+        buf = StringIO()
+        with redirect_stdout(buf):
+            result = gcli.check_manifest_format("test_manifests/test_manifest_int_errors.yml", True)
+        output = buf.getvalue()
+        self.assertEqual(result, gcli.EX_INVALID_EXP_FORMAT)
+        self.assertIn("trialResultLineNumber attribute in manifest.yml is empty or missing.", output)
+        self.assertIn("timeout attribute in manifest.yml is not greater than 0.", output)
+        self.assertIn("workers attribute in manifest.yml is not greater than 0", output)
+        
+    def test_manifest_bool_errors(self):
+        buf = StringIO()
+        with redirect_stdout(buf):
+            result = gcli.check_manifest_format("test_manifests/test_manifest_bool_errors.yml", True)
+        output = buf.getvalue()
+        self.assertEqual(result, gcli.EX_INVALID_EXP_FORMAT)
+        self.assertIn("keepLogs attribute in manifest.yml is empty, missing, or not true or false.", output)
+        self.assertIn("sendEmail attribute in manifest.yml is empty, missing, or not true or false.", output)
+        self.assertIn("scatter attribute in manifest.yml is empty, missing, or not true or false.", output)
+        
+    def test_manifest_param_errors(self):
+        buf = StringIO()
+        with redirect_stdout(buf):
+            result = gcli.check_manifest_format("test_manifests/test_manifest_param_errors.yml", True)
+        output = buf.getvalue()
+        self.assertEqual(result, gcli.EX_INVALID_EXP_FORMAT)
+        self.assertIn("min attribute in hyperparameter x is not a float.", output)
+        self.assertIn("values attribute in hyperparameter values1 is not a list.", output)
+        self.assertIn("min attribute in hyperparameter y is not an integer.", output)
+        self.assertIn("max attribute in hyperparameter z is not greater than 12.", output)
+        self.assertIn("default attribute in hyperparameter values2 is empty, missing, or not true or false.", output)
+        self.assertIn("Type specified in hyperparameter values3 is not integer, float, bool, stringlist, or paramgroup.", output)
     
 if __name__ == '__main__':
     unittest.main()
