@@ -1,0 +1,32 @@
+hyperparameters:
+  - name: x
+    default: "-1"
+    min: "1.5"
+    max: "10.5"
+    step: "1.0"
+    type: float
+    useDefault: false
+
+  - name: y
+    default: "-1"
+    min: "1.5"
+    max: "10.5"
+    step: "1.0"
+    type: float
+    useDefault: false
+name: 
+description: "Hi"
+tags: ["Neural Network", "ECE497"]
+trialExtraFile: "AddNumResult.csv"
+trialResult: 
+trialResultLineNumber: 0
+scatter: true
+scatterIndVar: ""
+scatterDepVar: ""
+dumbTextArea: ""
+timeout: 100
+keepLogs: true
+sendEmail: false
+workers: 1
+experimentExecutable: ""
+
