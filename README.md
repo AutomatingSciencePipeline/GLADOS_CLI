@@ -18,10 +18,10 @@ Below are the operations you can perform (note that they are mutually exclusive 
 
 ## Upload & Run Experiments
 
-To upload and run an experiment, use the `-r` or `--run-experiment` option, passing in the path of an executable file or zip folder to the command:
+To upload and run an experiment, use the `-z` or `--upload` option, passing in the path of an executable file or zip folder to the command:
 
 ```sh
-python glados_cli.py -r <executable file path>
+python glados_cli.py -z <executable file path>
 ```
 
 Additionally, there must be a manifest.yml file in the same experiment directory, declaring experiment parameters and other config variables, for running the experiment to work. See template_manifest.yml for more details, including information on experiment compatibility.
