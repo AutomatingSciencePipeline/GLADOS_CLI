@@ -51,17 +51,17 @@ class GladosCliTests(unittest.TestCase):
     def test_mutually_exclusive_parameters(self) -> None:
         # Test that -s and -z cannot be used together
         self.request_manager.authenticate.return_value = True
-        self._assert_status_code(['-q', 'some_value', '-r', 'another_value'], gcli.EX_PARSE_ERROR)
+        self._assert_status_code(['-q', 'some_value', '-z', 'another_value'], gcli.EX_PARSE_ERROR)
         self._assert_status_code(['-d', 'some_value', 'some_value', '-q', 'another_value'], gcli.EX_PARSE_ERROR)
-        self._assert_status_code(['-r', 'some_value', '-d', 'another_value', 'another_value'], gcli.EX_PARSE_ERROR)
-        self._assert_in_error("-r")
+        self._assert_status_code(['-z', 'some_value', '-d', 'another_value', 'another_value'], gcli.EX_PARSE_ERROR)
+        self._assert_in_error("-z")
         self._assert_in_error("-q")
         self._assert_in_error("-d")
         
     def test_with_invalid_token(self) -> None:
         # Test with an invalid token
         self.request_manager.authenticate.return_value = False
-        self._assert_status_code(['-t', 'invalid_token1', '-r', 'experiment.zip'], gcli.EX_INVALID_TOKEN)
+        self._assert_status_code(['-t', 'invalid_token1', '-z', 'experiment.zip'], gcli.EX_INVALID_TOKEN)
         self._assert_in_error("token")
         self._assert_status_code(['-t', 'invalid_token2', '-q', 'experiment_name'], gcli.EX_INVALID_TOKEN)
         self._assert_in_error("token")
@@ -80,7 +80,7 @@ class GladosCliTests(unittest.TestCase):
             'error': '',
             'exp_id': 'exp123'
         }
-        self._assert_status_code(['-t', 'valid_token', '-r', 'valid-experiment.zip'], gcli.EX_SUCCESS)
+        self._assert_status_code(['-t', 'valid_token', '-z', 'valid-experiment.zip'], gcli.EX_SUCCESS)
         
         self.request_manager.authenticate.assert_called_with('valid_token')
         self.request_manager.upload_and_start_experiment.assert_called_with('valid-experiment.zip')
@@ -97,7 +97,7 @@ class GladosCliTests(unittest.TestCase):
             'error': '',
             'exp_id': 'expabc'
         }
-        self._assert_status_code(['-r', 'valid-experiment.zip'], gcli.EX_SUCCESS)
+        self._assert_status_code(['-z', 'valid-experiment.zip'], gcli.EX_SUCCESS)
         self.request_manager.authenticate.assert_called_with('valid_token')
         self.request_manager.upload_and_start_experiment.assert_called_with('valid-experiment.zip')
         self._assert_in_output('expabc')
@@ -117,7 +117,7 @@ class GladosCliTests(unittest.TestCase):
     def test_run_missing_experiment(self) -> None:
         # Test running a non-existent experiment file
         self.request_manager.authenticate.return_value = True
-        self._assert_status_code(['-t', 'valid_token', '-r', 'missing_experiment.zip'], gcli.EX_NOTFOUND)
+        self._assert_status_code(['-t', 'valid_token', '-z', 'missing_experiment.zip'], gcli.EX_NOTFOUND)
         self.request_manager.authenticate.assert_called_with('valid_token')
         self._assert_in_error('missing_experiment.zip')
         self._assert_in_error('not found')
@@ -130,7 +130,7 @@ class GladosCliTests(unittest.TestCase):
             'error': 'bad_format',
             'exp_id': ''
         }
-        self._assert_status_code(['-t', 'valid_token', '-r', 'valid-experiment.zip'], gcli.EX_INVALID_EXP_FORMAT)
+        self._assert_status_code(['-t', 'valid_token', '-z', 'valid-experiment.zip'], gcli.EX_INVALID_EXP_FORMAT)
         self.request_manager.authenticate.assert_called_with('valid_token')
         self.request_manager.upload_and_start_experiment.assert_called_with('valid-experiment.zip')
         self._assert_in_error('format')
@@ -143,7 +143,7 @@ class GladosCliTests(unittest.TestCase):
             'error': 'other',
             'exp_id': ''
         }
-        self._assert_status_code(['-t', 'valid_token', '-r', 'valid-experiment.zip'], gcli.EX_UNKNOWN)
+        self._assert_status_code(['-t', 'valid_token', '-z', 'valid-experiment.zip'], gcli.EX_UNKNOWN)
         self.request_manager.authenticate.assert_called_with('valid_token')
         self.request_manager.upload_and_start_experiment.assert_called_with('valid-experiment.zip')
         self._assert_in_error('other')
