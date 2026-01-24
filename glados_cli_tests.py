@@ -52,8 +52,8 @@ class GladosCliTests(unittest.TestCase):
         # Test that -s and -z cannot be used together
         self.request_manager.authenticate.return_value = True
         self._assert_status_code(['-q', 'some_value', '-z', 'another_value'], gcli.EX_PARSE_ERROR)
-        self._assert_status_code(['-d', 'some_value', 'some_value', '-q', 'another_value'], gcli.EX_PARSE_ERROR)
-        self._assert_status_code(['-z', 'some_value', '-d', 'another_value', 'another_value'], gcli.EX_PARSE_ERROR)
+        self._assert_status_code(['-d', 'some_value', '-q', 'another_value'], gcli.EX_PARSE_ERROR)
+        self._assert_status_code(['-z', 'some_value', '-d', 'another_value'], gcli.EX_PARSE_ERROR)
         self._assert_in_error("-z")
         self._assert_in_error("-q")
         self._assert_in_error("-d")
@@ -65,7 +65,7 @@ class GladosCliTests(unittest.TestCase):
         self._assert_in_error("token")
         self._assert_status_code(['-t', 'invalid_token2', '-q', 'experiment_name'], gcli.EX_INVALID_TOKEN)
         self._assert_in_error("token")
-        self._assert_status_code(['-t', 'invalid_token3', '-d', 'experiment.zip', 'example_path'], gcli.EX_INVALID_TOKEN)
+        self._assert_status_code(['-t', 'invalid_token3', '-d', 'experiment.zip'], gcli.EX_INVALID_TOKEN)
         self._assert_in_error("token")
         self.request_manager.authenticate.assert_has_calls([
             mock.call('invalid_token1'), 
@@ -216,9 +216,9 @@ class GladosCliTests(unittest.TestCase):
                 }
             ]
         }
-        self._assert_status_code(['-t', 'valid_token', '-d', 'exp123', r'C:\Users\exampleUser\Downloads'], gcli.EX_SUCCESS)
+        self._assert_status_code(['-t', 'valid_token', '-d', 'exp123'], gcli.EX_SUCCESS)
         self.request_manager.authenticate.assert_called_with('valid_token')
-        self.request_manager.download_experiment_results.assert_called_with('exp123', r'C:\Users\exampleUser\Downloads')
+        self.request_manager.download_experiment_results.assert_called_with('exp123')
         self._assert_in_output('downloaded_results.zip')
         
     def test_download_experiment_not_found(self):
@@ -226,9 +226,9 @@ class GladosCliTests(unittest.TestCase):
             'success': False,
             'error': 'not_found'
         }
-        self._assert_status_code(['-t', 'valid_token', '-d', 'exp123', r'C:\Users\exampleUser\Downloads'], gcli.EX_NOTFOUND)
+        self._assert_status_code(['-t', 'valid_token', '-d', 'exp123'], gcli.EX_NOTFOUND)
         self.request_manager.authenticate.assert_called_with('valid_token')
-        self.request_manager.download_experiment_results.assert_called_with('exp123', r'C:\Users\exampleUser\Downloads')
+        self.request_manager.download_experiment_results.assert_called_with('exp123')
         self._assert_in_error("not found")
         
     def test_download_experiment_still_running(self):
@@ -236,9 +236,9 @@ class GladosCliTests(unittest.TestCase):
             'success': False,
             'error': 'not_done'
         }
-        self._assert_status_code(['-t', 'valid_token', '-d', 'exp123', r'C:\Users\exampleUser\Downloads'], gcli.EX_NOT_DONE)
+        self._assert_status_code(['-t', 'valid_token', '-d', 'exp123'], gcli.EX_NOT_DONE)
         self.request_manager.authenticate.assert_called_with('valid_token')
-        self.request_manager.download_experiment_results.assert_called_with('exp123', r'C:\Users\exampleUser\Downloads')
+        self.request_manager.download_experiment_results.assert_called_with('exp123')
         self._assert_in_error("still running")
         
     def test_download_experiment_failed(self):
@@ -246,9 +246,9 @@ class GladosCliTests(unittest.TestCase):
             'success': False,
             'error': 'exp_failed'
         }
-        self._assert_status_code(['-t', 'valid_token', '-d', 'exp123', r'C:\Users\exampleUser\Downloads'], gcli.EX_EXP_FAILED)
+        self._assert_status_code(['-t', 'valid_token', '-d', 'exp123'], gcli.EX_EXP_FAILED)
         self.request_manager.authenticate.assert_called_with('valid_token')
-        self.request_manager.download_experiment_results.assert_called_with('exp123', r'C:\Users\exampleUser\Downloads')
+        self.request_manager.download_experiment_results.assert_called_with('exp123')
         self._assert_in_error("did not complete successfully")
         
     def test_download_all_experiment_results(self):
@@ -262,19 +262,19 @@ class GladosCliTests(unittest.TestCase):
                 }
             ]
         }
-        self._assert_status_code(['-t', 'valid_token', '-da', 'exp123', r'C:\Users\exampleUser\Downloads'], gcli.EX_SUCCESS)
+        self._assert_status_code(['-t', 'valid_token', '-da', 'exp123'], gcli.EX_SUCCESS)
         self.request_manager.authenticate.assert_called_with('valid_token')
-        self.request_manager.download_all.assert_called_with('exp123', r'C:\Users\exampleUser\Downloads')
-        self._assert_in_output('All experiment artifacts downloaded successfully to C:\\Users\\exampleUser\\Downloads.')
+        self.request_manager.download_all.assert_called_with('exp123')
+        self._assert_in_output('All experiment artifacts downloaded successfully.')
         
     def test_download_all_experiment_not_found(self):
         self.request_manager.download_all.return_value = {
             'success': False,
             'error': 'not_found'
         }
-        self._assert_status_code(['-t', 'valid_token', '-da', 'exp123', r'C:\Users\exampleUser\Downloads'], gcli.EX_NOTFOUND)
+        self._assert_status_code(['-t', 'valid_token', '-da', 'exp123'], gcli.EX_NOTFOUND)
         self.request_manager.authenticate.assert_called_with('valid_token')
-        self.request_manager.download_all.assert_called_with('exp123', r'C:\Users\exampleUser\Downloads')
+        self.request_manager.download_all.assert_called_with('exp123')
         self._assert_in_error("not found")
         
     def test_download_all_experiment_still_running(self):
@@ -282,9 +282,9 @@ class GladosCliTests(unittest.TestCase):
             'success': False,
             'error': 'not_done'
         }
-        self._assert_status_code(['-t', 'valid_token', '-da', 'exp123', r'C:\Users\exampleUser\Downloads'], gcli.EX_NOT_DONE)
+        self._assert_status_code(['-t', 'valid_token', '-da', 'exp123'], gcli.EX_NOT_DONE)
         self.request_manager.authenticate.assert_called_with('valid_token')
-        self.request_manager.download_all.assert_called_with('exp123', r'C:\Users\exampleUser\Downloads')
+        self.request_manager.download_all.assert_called_with('exp123')
         self._assert_in_error("still running")
         
     def test_download_all_experiment_failed(self):
@@ -292,9 +292,9 @@ class GladosCliTests(unittest.TestCase):
             'success': False,
             'error': 'exp_failed'
         }
-        self._assert_status_code(['-t', 'valid_token', '-da', 'exp123', r'C:\Users\exampleUser\Downloads'], gcli.EX_EXP_FAILED)
+        self._assert_status_code(['-t', 'valid_token', '-da', 'exp123'], gcli.EX_EXP_FAILED)
         self.request_manager.authenticate.assert_called_with('valid_token')
-        self.request_manager.download_all.assert_called_with('exp123', r'C:\Users\exampleUser\Downloads')
+        self.request_manager.download_all.assert_called_with('exp123')
         self._assert_in_error("did not complete successfully")
         
     def test_cli_update_success(self):
