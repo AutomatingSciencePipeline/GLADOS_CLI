@@ -50,20 +50,20 @@ To search all experiments, use the title "*".
 To download experiment results, use the `d` or `--download` option:
 
 ```sh
-python glados-cli.py -d <exp_id> [destination]
+python glados-cli.py -d <exp_id>
 ```
 
-This will save the experiment result csv file to the specified directory.
+This will save the experiment result csv file to the current user directory.
 
 ## Download All Experiment Artifacts
 
 To download all experiment artifacts, including result csv file, project zip file, and system logs, use the `da` or `--download-all` option:
 
 ```sh
-python glados-cli.py -da <exp_id> [destination]
+python glados-cli.py -da <exp_id> 
 ```
 
-This will save the experiment artifacts to the specified directory.
+This will save the experiment artifacts to the current user directory.
 
 Should an error occur in running the experiment (not all the trials completing successfully), system logs can be an excellent debugging source.
 
