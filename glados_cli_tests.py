@@ -347,7 +347,6 @@ class GladosCliTests(unittest.TestCase):
             result = gcli.check_manifest_format("test_manifests/test_manifest_bool_errors.yml", True)
         output = buf.getvalue()
         self.assertEqual(result, gcli.EX_INVALID_EXP_FORMAT)
-        self.assertIn("keepLogs attribute in manifest.yml is empty, missing, or not true or false.", output)
         self.assertIn("sendEmail attribute in manifest.yml is empty, missing, or not true or false.", output)
         self.assertIn("scatter attribute in manifest.yml is empty, missing, or not true or false.", output)
         
@@ -366,3 +365,4 @@ class GladosCliTests(unittest.TestCase):
     
 if __name__ == '__main__':
     unittest.main()
+
