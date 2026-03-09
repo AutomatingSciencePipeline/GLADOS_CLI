@@ -75,9 +75,6 @@ dumbTextArea: ""
 # The duration before the experiment automatically times out (seconds)
 # Example: 600
 timeout: 100
-# Select this option to store logs from the experiment runner pod. It is recommended to always set this to true
-# Example: true
-keepLogs: true
 # This allows an email to be sent following experiment completion with number of passed and failed trials
 # Example: true
 sendEmail: false
