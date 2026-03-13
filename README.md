@@ -1,4 +1,4 @@
-# GLADOS_CLI
+# GLADOS CLI
 This is the command line interface version of GLADOS, allowing for more flexibility for users who desire a programmatic mode of navigating GLADOS. This tool runs using Python and requires no external libraries. The majority of this README gives an overview on CLI commands- for more information on experiment compatibility for being able to be run on the GLADOS system, check out the section "EXPERIMENT COMPATIBILITY" at the bottom or at the following [link](https://automatingsciencepipeline.github.io/Monorepo/tutorial/usage/)
 
 In order to use this tool, you must authenticate your GLADOS account with GitHub.
@@ -77,7 +77,7 @@ python glados-cli.py -u
 
 This will download the new CLI from the remote repository and rename the current CLI to glaods_cli_old.py.
 
-## EXPERIMENT COMPATIBILITY
+## Experiment Compatability
 
 GLADOS supports experiments that are one of the 3 types below:
 
