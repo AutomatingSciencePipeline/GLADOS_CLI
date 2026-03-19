@@ -84,10 +84,8 @@ workers: 1
 # If using a zip experiment, specify the main executable filename.
 # Example: "test.py" if using zip, "" if not
 experimentExecutable: "test.py"
-# This attribute should remain blank.
-# Example: ""
-file: ""
-# This attribute should remain as CREATED.
-# Example: "CREATED"
-status: "CREATED"
+# This attribute, set to either ini or yaml, defines the format of the config file generated for each trial.
+# Example: "ini" or "yaml"
+configFileFormat: "ini"
+
 
