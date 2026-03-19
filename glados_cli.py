@@ -426,6 +426,9 @@ def check_manifest_format(manifest_path: str, is_zip_file: bool) -> int:
                 results.append(False)
     if is_zip_file is True:
         results.append(check_manifest_format_str_helper(config, "experimentExecutable", "manifest.yml"))
+    if config["configFileFormat"] != "yaml" and config["configFileFormat"] != "ini":
+        print("configFileFormat attribute in manifest.yml must be either 'yaml' or 'ini'.")
+        results.append(False)
     if all(results) is False:
         return EX_INVALID_EXP_FORMAT
     else:
