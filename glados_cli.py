@@ -298,6 +298,7 @@ def generate_token(request_manager: RequestManager) -> str:
         return access_token
     else:
         perror(f'{result["error"]}')
+        return None
 
 def validate_token(request_manager: RequestManager, token: str) -> bool:
     """Validates the provided authentication token."""
@@ -551,7 +552,7 @@ def parse_args(request_manager: RequestManager, args: Optional[typing.Sequence[s
         check_version(request_manager, "glados_cli.py")
 
     if not exactly_one([parsed.upload, parsed.query, parsed.download, parsed.download_all]) and not parsed.generate_token and not parsed.token:
-        perror("error: Exactly one of -z, -q, or -d must be provided.")
+        perror("error: Invalid flags. Please run \"glados-cli.py --help\" for usage information.")
         return EX_PARSE_ERROR
     elif not parsed.token and not parsed.generate_token:
         if not os.path.exists(".token.glados"):
@@ -561,8 +562,9 @@ def parse_args(request_manager: RequestManager, args: Optional[typing.Sequence[s
             parsed.token = get_token()
             
     if parsed.generate_token:
-        generate_token(request_manager)
-    elif parsed.token:
+        parsed.token = generate_token(request_manager)
+        
+    if parsed.token:
         result = store_token(parsed.token)
         if result != EX_SUCCESS:
             perror("error: An unexpected error occurred while storing the token.")
