@@ -14,7 +14,7 @@ import urllib3
 
 API_HOST = "https://glados.csse.rose-hulman.edu/"
 
-CLIENT_ID = os.getenv("GLADOS_CLIENT_ID")
+CLIENT_ID = "Ov23livJkEfAtIMMnwIP"
 
 DEVICE_CODE_URL = "https://github.com/login/device/code"
 ACCESS_TOKEN_URL = "https://github.com/login/oauth/access_token"
