@@ -19,6 +19,14 @@ class GladosCliTests(unittest.TestCase):
         # Allow for testing what's printed to stdout and stderr
         self.out = io.StringIO()
         self.err = io.StringIO()
+        # Create a stored token file for tests that require authentication
+        with open('.token.glados', 'w') as f:
+            f.write('new_valid_token')
+    
+    def tearDown(self):
+        # Clean up the token file
+        if os.path.exists('.token.glados'):
+            os.remove('.token.glados')
                     
     def _makeZipFile(self, dirname: str) -> None:
         with zipfile.ZipFile(f'{dirname}.zip', 'w') as zf:
@@ -49,40 +57,38 @@ class GladosCliTests(unittest.TestCase):
         self.assertIn(substring, error)
     
     def test_mutually_exclusive_parameters(self) -> None:
-        # Test that -s and -z cannot be used together
-        self.request_manager.authenticate.return_value = True
+        # Test that mutually exclusive parameters cannot be used together
         self._assert_status_code(['-q', 'some_value', '-z', 'another_value'], gcli.EX_PARSE_ERROR)
         self._assert_status_code(['-d', 'some_value', '-q', 'another_value'], gcli.EX_PARSE_ERROR)
         self._assert_status_code(['-z', 'some_value', '-d', 'another_value'], gcli.EX_PARSE_ERROR)
-        self._assert_in_error("-z")
-        self._assert_in_error("-q")
-        self._assert_in_error("-d")
+        self._assert_status_code(['-da', 'some_value', '-z', 'another_value'], gcli.EX_PARSE_ERROR)
+        self._assert_in_error("Invalid flags")
         
     def test_with_invalid_token(self) -> None:
-        # Test with an invalid token
-        self.request_manager.authenticate.return_value = False
-        self._assert_status_code(['-t', 'invalid_token1', '-z', 'experiment.zip'], gcli.EX_INVALID_TOKEN)
-        self._assert_in_error("token")
-        self._assert_status_code(['-t', 'invalid_token2', '-q', 'experiment_name'], gcli.EX_INVALID_TOKEN)
-        self._assert_in_error("token")
-        self._assert_status_code(['-t', 'invalid_token3', '-d', 'experiment.zip'], gcli.EX_INVALID_TOKEN)
-        self._assert_in_error("token")
+        # Test with an invalid stored token
+        self.request_manager.authenticate.return_value = {"uid": None, "error": "invalid"}
+        self._assert_status_code(['-z', 'experiment.zip'], gcli.EX_INVALID_TOKEN)
+        self._assert_in_error("Cannot authenticate token")
+        self._assert_status_code(['-q', 'experiment_name'], gcli.EX_INVALID_TOKEN)
+        self._assert_in_error("Cannot authenticate token")
+        self._assert_status_code(['-d', 'experiment.zip'], gcli.EX_INVALID_TOKEN)
+        self._assert_in_error("Cannot authenticate token")
         self.request_manager.authenticate.assert_has_calls([
-            mock.call('invalid_token1'), 
-            mock.call('invalid_token2'),
-            mock.call('invalid_token3')], any_order=False)
+            mock.call('new_valid_token'), 
+            mock.call('new_valid_token'),
+            mock.call('new_valid_token')], any_order=False)
         
     def test_run_experiment(self) -> None:
         # Test running an experiment with a valid token
-        self.request_manager.authenticate.return_value = True
+        self.request_manager.authenticate.return_value = {"uid": "test", "error": None}
         self.request_manager.upload_and_start_experiment.return_value = {
             'success': True,
             'error': '',
             'exp_id': 'exp123'
         }
-        self._assert_status_code(['-t', 'valid_token', '-z', 'valid-experiment.zip'], gcli.EX_SUCCESS)
+        self._assert_status_code(['-z', 'valid-experiment.zip'], gcli.EX_SUCCESS)
         
-        self.request_manager.authenticate.assert_called_with('valid_token')
+        self.request_manager.authenticate.assert_called_with('new_valid_token')
         self.request_manager.upload_and_start_experiment.assert_called_with('valid-experiment.zip')
         self._assert_in_output('exp123')
         
@@ -91,7 +97,7 @@ class GladosCliTests(unittest.TestCase):
         with open('.token.glados', 'w') as f:
             f.write('valid_token')
             
-        self.request_manager.authenticate.return_value = True
+        self.request_manager.authenticate.return_value = {"uid": "test", "error": None}
         self.request_manager.upload_and_start_experiment.return_value = {
             'success': True,
             'error': '',
@@ -116,40 +122,40 @@ class GladosCliTests(unittest.TestCase):
     
     def test_run_missing_experiment(self) -> None:
         # Test running a non-existent experiment file
-        self.request_manager.authenticate.return_value = True
-        self._assert_status_code(['-t', 'valid_token', '-z', 'missing_experiment.zip'], gcli.EX_NOTFOUND)
-        self.request_manager.authenticate.assert_called_with('valid_token')
+        self.request_manager.authenticate.return_value = {"uid": "test", "error": None}
+        self._assert_status_code(['-z', 'missing_experiment.zip'], gcli.EX_NOTFOUND)
+        self.request_manager.authenticate.assert_called_with('new_valid_token')
         self._assert_in_error('missing_experiment.zip')
         self._assert_in_error('not found')
         
     def test_run_experiment_backend_format_failure(self) -> None:
         # Test running an experiment where the backend's format validation fails
-        self.request_manager.authenticate.return_value = True
+        self.request_manager.authenticate.return_value = {"uid": "test", "error": None}
         self.request_manager.upload_and_start_experiment.return_value = {
             'success': False,
             'error': 'bad_format',
             'exp_id': ''
         }
-        self._assert_status_code(['-t', 'valid_token', '-z', 'valid-experiment.zip'], gcli.EX_INVALID_EXP_FORMAT)
-        self.request_manager.authenticate.assert_called_with('valid_token')
+        self._assert_status_code(['-z', 'valid-experiment.zip'], gcli.EX_INVALID_EXP_FORMAT)
+        self.request_manager.authenticate.assert_called_with('new_valid_token')
         self.request_manager.upload_and_start_experiment.assert_called_with('valid-experiment.zip')
         self._assert_in_error('format')
         
     def test_run_experiment_other_backend_failure(self) -> None:
         # Test running an experiment where the backend fails for other reasons
-        self.request_manager.authenticate.return_value = True
+        self.request_manager.authenticate.return_value = {"uid": "test", "error": None}
         self.request_manager.upload_and_start_experiment.return_value = {
             'success': False,
             'error': 'other',
             'exp_id': ''
         }
-        self._assert_status_code(['-t', 'valid_token', '-z', 'valid-experiment.zip'], gcli.EX_UNKNOWN)
-        self.request_manager.authenticate.assert_called_with('valid_token')
+        self._assert_status_code(['-z', 'valid-experiment.zip'], gcli.EX_UNKNOWN)
+        self.request_manager.authenticate.assert_called_with('new_valid_token')
         self.request_manager.upload_and_start_experiment.assert_called_with('valid-experiment.zip')
         self._assert_in_error('other')
         
     def test_query_one_experiment(self):
-        self.request_manager.authenticate.return_value = True
+        self.request_manager.authenticate.return_value = {"uid": "test", "error": None}
         self.request_manager.query_experiments.return_value = {
             'success': True,
             'matches': [
@@ -162,13 +168,13 @@ class GladosCliTests(unittest.TestCase):
                  'total_permutations': 100},
             ]
         }
-        self._assert_status_code(['-t', 'valid_token', '-q', 'Test Experiment'], gcli.EX_SUCCESS)
-        self.request_manager.authenticate.assert_called_with('valid_token')
+        self._assert_status_code(['-q', 'Test Experiment'], gcli.EX_SUCCESS)
+        self.request_manager.authenticate.assert_called_with('new_valid_token')
         self.request_manager.query_experiments.assert_called_with('Test Experiment')     
         self._assert_in_output('Test Experiment')
     
     def test_query_multiple_experiments(self):
-        self.request_manager.authenticate.return_value = True
+        self.request_manager.authenticate.return_value = {"uid": "test", "error": None}
         self.request_manager.query_experiments.return_value = {
             'success': True,
             'matches': [
@@ -188,25 +194,25 @@ class GladosCliTests(unittest.TestCase):
                  'total_permutations': 100},
             ]
         }
-        self._assert_status_code(['-t', 'valid_token', '-q', 'Test Experiment'], gcli.EX_SUCCESS)
-        self.request_manager.authenticate.assert_called_with('valid_token')
+        self._assert_status_code(['-q', 'Test Experiment'], gcli.EX_SUCCESS)
+        self.request_manager.authenticate.assert_called_with('new_valid_token')
         self.request_manager.query_experiments.assert_called_with('Test Experiment')
         self._assert_in_output('Test Experiment 1')
         self._assert_in_output('Test Experiment 2')
         
     def test_query_no_experiments(self):
-        self.request_manager.authenticate.return_value = True
+        self.request_manager.authenticate.return_value = {"uid": "test", "error": None}
         self.request_manager.query_experiments.return_value = {
             'success': True,
             'matches': []
         }
-        self._assert_status_code(['-t', 'valid_token', '-q', 'Nonexistent Experiment'], gcli.EX_NOTFOUND)
-        self.request_manager.authenticate.assert_called_with('valid_token')
+        self._assert_status_code(['-q', 'Nonexistent Experiment'], gcli.EX_NOTFOUND)
+        self.request_manager.authenticate.assert_called_with('new_valid_token')
         self.request_manager.query_experiments.assert_called_with('Nonexistent Experiment')
         self._assert_in_error('No experiments found')
     
     def test_download_experiment_results(self):
-        self.request_manager.authenticate.return_value = True
+        self.request_manager.authenticate.return_value = {"uid": "test", "error": None}
         self.request_manager.download_experiment_results.return_value = {
             'success': True,
             'files': [
@@ -216,43 +222,46 @@ class GladosCliTests(unittest.TestCase):
                 }
             ]
         }
-        self._assert_status_code(['-t', 'valid_token', '-d', 'exp123'], gcli.EX_SUCCESS)
-        self.request_manager.authenticate.assert_called_with('valid_token')
+        self._assert_status_code(['-d', 'exp123'], gcli.EX_SUCCESS)
+        self.request_manager.authenticate.assert_called_with('new_valid_token')
         self.request_manager.download_experiment_results.assert_called_with('exp123')
         self._assert_in_output('downloaded_results.zip')
         
     def test_download_experiment_not_found(self):
+        self.request_manager.authenticate.return_value = {"uid": "test", "error": None}
         self.request_manager.download_experiment_results.return_value = {
             'success': False,
             'error': 'not_found'
         }
-        self._assert_status_code(['-t', 'valid_token', '-d', 'exp123'], gcli.EX_NOTFOUND)
-        self.request_manager.authenticate.assert_called_with('valid_token')
+        self._assert_status_code(['-d', 'exp123'], gcli.EX_NOTFOUND)
+        self.request_manager.authenticate.assert_called_with('new_valid_token')
         self.request_manager.download_experiment_results.assert_called_with('exp123')
         self._assert_in_error("not found")
         
     def test_download_experiment_still_running(self):
+        self.request_manager.authenticate.return_value = {"uid": "test", "error": None}
         self.request_manager.download_experiment_results.return_value = {
             'success': False,
             'error': 'not_done'
         }
-        self._assert_status_code(['-t', 'valid_token', '-d', 'exp123'], gcli.EX_NOT_DONE)
-        self.request_manager.authenticate.assert_called_with('valid_token')
+        self._assert_status_code(['-d', 'exp123'], gcli.EX_NOT_DONE)
+        self.request_manager.authenticate.assert_called_with('new_valid_token')
         self.request_manager.download_experiment_results.assert_called_with('exp123')
         self._assert_in_error("still running")
         
     def test_download_experiment_failed(self):
+        self.request_manager.authenticate.return_value = {"uid": "test", "error": None}
         self.request_manager.download_experiment_results.return_value = {
             'success': False,
             'error': 'exp_failed'
         }
-        self._assert_status_code(['-t', 'valid_token', '-d', 'exp123'], gcli.EX_EXP_FAILED)
-        self.request_manager.authenticate.assert_called_with('valid_token')
+        self._assert_status_code(['-d', 'exp123'], gcli.EX_EXP_FAILED)
+        self.request_manager.authenticate.assert_called_with('new_valid_token')
         self.request_manager.download_experiment_results.assert_called_with('exp123')
         self._assert_in_error("did not complete successfully")
         
     def test_download_all_experiment_results(self):
-        self.request_manager.authenticate.return_value = True
+        self.request_manager.authenticate.return_value = {"uid": "test", "error": None}
         self.request_manager.download_all.return_value = {
             'success': True,
             'files': [
@@ -262,38 +271,41 @@ class GladosCliTests(unittest.TestCase):
                 }
             ]
         }
-        self._assert_status_code(['-t', 'valid_token', '-da', 'exp123'], gcli.EX_SUCCESS)
-        self.request_manager.authenticate.assert_called_with('valid_token')
+        self._assert_status_code(['-da', 'exp123'], gcli.EX_SUCCESS)
+        self.request_manager.authenticate.assert_called_with('new_valid_token')
         self.request_manager.download_all.assert_called_with('exp123')
         self._assert_in_output('All experiment artifacts downloaded successfully.')
         
     def test_download_all_experiment_not_found(self):
+        self.request_manager.authenticate.return_value = {"uid": "test", "error": None}
         self.request_manager.download_all.return_value = {
             'success': False,
             'error': 'not_found'
         }
-        self._assert_status_code(['-t', 'valid_token', '-da', 'exp123'], gcli.EX_NOTFOUND)
-        self.request_manager.authenticate.assert_called_with('valid_token')
+        self._assert_status_code(['-da', 'exp123'], gcli.EX_NOTFOUND)
+        self.request_manager.authenticate.assert_called_with('new_valid_token')
         self.request_manager.download_all.assert_called_with('exp123')
         self._assert_in_error("not found")
         
     def test_download_all_experiment_still_running(self):
+        self.request_manager.authenticate.return_value = {"uid": "test", "error": None}
         self.request_manager.download_all.return_value = {
             'success': False,
             'error': 'not_done'
         }
-        self._assert_status_code(['-t', 'valid_token', '-da', 'exp123'], gcli.EX_NOT_DONE)
-        self.request_manager.authenticate.assert_called_with('valid_token')
+        self._assert_status_code(['-da', 'exp123'], gcli.EX_NOT_DONE)
+        self.request_manager.authenticate.assert_called_with('new_valid_token')
         self.request_manager.download_all.assert_called_with('exp123')
         self._assert_in_error("still running")
         
     def test_download_all_experiment_failed(self):
+        self.request_manager.authenticate.return_value = {"uid": "test", "error": None}
         self.request_manager.download_all.return_value = {
             'success': False,
             'error': 'exp_failed'
         }
-        self._assert_status_code(['-t', 'valid_token', '-da', 'exp123'], gcli.EX_EXP_FAILED)
-        self.request_manager.authenticate.assert_called_with('valid_token')
+        self._assert_status_code(['-da', 'exp123'], gcli.EX_EXP_FAILED)
+        self.request_manager.authenticate.assert_called_with('new_valid_token')
         self.request_manager.download_all.assert_called_with('exp123')
         self._assert_in_error("did not complete successfully")
         

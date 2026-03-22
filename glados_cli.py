@@ -294,7 +294,7 @@ def generate_token(request_manager: RequestManager) -> str:
     access_token = result["access_token"]
     error = result["error"]
     if error is None:
-        print(f"Your token is: {access_token}")
+        print(f"Your token is: {access_token}. It has been stored in local file .token.glados for future use.\nPlease keep this token secure and do not share it with others, as it provides access to your GLADOS account.\n")
         return access_token
     else:
         perror(f'{result["error"]}')
@@ -537,11 +537,10 @@ def parse_args(request_manager: RequestManager, args: Optional[typing.Sequence[s
         prog="GLADOS CLI",
         description="The command line interface for GLADOS.")
     parser.add_argument('--generate-token', action='store_true', help='Generate a new authentication token and exit, regardless of other options used.')
-    parser.add_argument('--token',  '-t', type=str, help='Authentication token to use. If none is provided, it will either read ".token.glados" or prompt to generate a new token.')
-    parser.add_argument('--upload', '-z', type=str, help='Upload an experiment file with a given file path. Can be used with -t.')
-    parser.add_argument('--query',  '-q', type=str, help='Query experiment status of experiments with a given name. If the name is "*", show all experiments. Can be used with -t')
-    parser.add_argument('--download', '-d', type=str, help='Download the results of a completed experiment. Can be used with -t')
-    parser.add_argument('--download-all', '-da', type=str, help='Download all artifacts from an experiment. Can be used with -t')
+    parser.add_argument('--upload', '-z', type=str, help='Upload an experiment file with a given file path. Can be used with --generate-token.')
+    parser.add_argument('--query',  '-q', type=str, help='Query experiment status of experiments with a given name. If the name is "*", show all experiments. Can be used with --generate-token')
+    parser.add_argument('--download', '-d', type=str, help='Download the results of a completed experiment. Can be used with --generate-token')
+    parser.add_argument('--download-all', '-da', type=str, help='Download all artifacts from an experiment. Can be used with --generate-token')
     parser.add_argument('--update', '-u', action='store_true', help='Downloads most up-to-date CLI version.')
     
     parsed = parser.parse_args(args)
@@ -551,10 +550,10 @@ def parse_args(request_manager: RequestManager, args: Optional[typing.Sequence[s
     else:
         check_version(request_manager, "glados_cli.py")
 
-    if not exactly_one([parsed.upload, parsed.query, parsed.download, parsed.download_all]) and not parsed.generate_token and not parsed.token:
+    if not exactly_one([parsed.upload, parsed.query, parsed.download, parsed.download_all]) and not parsed.generate_token:
         perror("error: Invalid flags. Please run \"glados-cli.py --help\" for usage information.")
         return EX_PARSE_ERROR
-    elif not parsed.token and not parsed.generate_token:
+    elif not parsed.generate_token:
         if not os.path.exists(".token.glados"):
             perror("error: No token provided and no stored token found. Please generate a token using --generate-token.")
             return EX_INVALID_TOKEN
@@ -563,19 +562,18 @@ def parse_args(request_manager: RequestManager, args: Optional[typing.Sequence[s
             
     if parsed.generate_token:
         parsed.token = generate_token(request_manager)
-        
-    if parsed.token:
         result = store_token(parsed.token)
         if result != EX_SUCCESS:
             perror("error: An unexpected error occurred while storing the token.")
-        auth_result = request_manager.authenticate(parsed.token)
-        if type(auth_result) is bool:
-            if auth_result is False:
-                perror("error: Cannot authenticate token - check your internet connection and token.")
-                return EX_INVALID_TOKEN
-        elif auth_result.get("uid") is None:
+        
+    auth_result = request_manager.authenticate(parsed.token)
+    if isinstance(auth_result, bool):
+        if auth_result is False:
             perror("error: Cannot authenticate token - check your internet connection and token.")
             return EX_INVALID_TOKEN
+    elif auth_result.get("uid") is None:
+        perror("error: Cannot authenticate token - check your internet connection and token.")
+        return EX_INVALID_TOKEN
     
     # Authentication successful, proceed with requested operation
     result = EX_SUCCESS
