@@ -6,9 +6,8 @@ Usage of this tool requires the following:
  - The following PIP packages: `pyyaml`, `requests`
  - An authenticated GitHub account (see below)
 
-The below instructions allows you to generate a token for authenticating to the GLADOS system:
+The below instruction allows you to generate a token for authenticating to the GLADOS system:
 
-Manual Steps:
 ```sh
 python glados_cli.py --generate-token
 ```
