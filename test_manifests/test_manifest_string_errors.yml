@@ -29,4 +29,5 @@ keepLogs: true
 sendEmail: false
 workers: 1
 experimentExecutable: ""
+configFileFormat: "ini"
 

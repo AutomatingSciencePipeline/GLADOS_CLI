@@ -53,4 +53,5 @@ keepLogs: true
 sendEmail: false
 workers: 1
 experimentExecutable: "testint.py"
+configFileFormat: "ini"
 
