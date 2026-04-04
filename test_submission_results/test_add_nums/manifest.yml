@@ -44,10 +44,10 @@ hyperparameters:
     useDefault: false
 # The experiment name. 
 # Example: "Evolutionary Aglorithm Experiment"
-name: "Demo"
+name: "Test AddNums"
 # This is the description of the experiment. 
 # Example: "Experiment for CSSE490 Homework 4."
-description: "This is a demo for Dr. Wilson!"
+description: "This is to test AddNums!"
 # These are the tags which can be defined for an experiment, allowing for better filtering on the web app.
 # Example: ["Neural Network", "ECE497"]
 tags: ["Neural Network", "ECE497"]
