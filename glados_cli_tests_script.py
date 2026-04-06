@@ -53,6 +53,17 @@ try:
 except Exception as e:
     print(f"Test failed with error: {e}")
     
+print("\nStarting experiment download all test...\n")
+try:
+    result = subprocess.run(["python", "glados_cli.py", "-da", experiment_id], capture_output=True, text=True)
+    print("Output:\n", result.stdout.strip())
+    if result.stderr:
+        print("Errors:\n", result.stderr.strip())  
+    else:
+        print("Test passed: Experiment artifacts downloaded successfully.")
+except Exception as e:
+    print(f"Test failed with error: {e}")
+    
 print("\nStarting experiment query test...\n")
 try:
     result = subprocess.run(["python", "glados_cli.py", "-q", "Test AddNums"], capture_output=True, text=True)
