@@ -1,0 +1,57 @@
+hyperparameters:
+  - name: x
+    default: "-1"
+    min: "hi"
+    max: "10.5"
+    step: "1.0"
+    type: float
+    useDefault: false
+
+  - name: values1
+    default: "-1"
+    values: "a"
+    type: stringlist
+    useDefault: false
+
+  - name: y
+    default: "-1"
+    min: "1.5"
+    max: "10"
+    step: "1"
+    type: integer
+    useDefault: false
+
+  - name: z
+    default: "-1"
+    min: "12"
+    max: "10"
+    step: "1"
+    type: integer
+    useDefault: false
+
+  - name: values2
+    default: 3
+    useDefault: true
+    type: bool
+  
+  - name: values3
+    default: true
+    useDefault: true
+    type: truthy
+name: "Int test"
+description: "Hi"
+tags: ["Neural Network", "ECE497"]
+trialExtraFile: "AddNumResult.csv"
+trialResult: "IntTest.csv"
+trialResultLineNumber: 0
+scatter: false
+scatterIndVar: ""
+scatterDepVar: ""
+dumbTextArea: ""
+timeout: 1
+keepLogs: true
+sendEmail: false
+workers: 1
+experimentExecutable: "testint.py"
+configFileFormat: "ini"
+

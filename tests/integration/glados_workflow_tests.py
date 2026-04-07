@@ -1,13 +1,19 @@
-# To run this test suite, ensure that you are first authenticated with the CLI,
+# To run this test script, ensure that you are first authenticated with the CLI,
 # as it expects there is a valid token stored in the .token.glados file.
 # There should also be no existing experiment with the same name as the one 
 # specified in the manifest.yml file of the experiment being tested, as this test 
-# suite expects to create a new experiment and will fail if an experiment with the 
+# script expects to create a new experiment and will fail if an experiment with the 
 # same name already exists.
 
+import os
 import subprocess
 import time
+import glob
 import pandas as pd
+
+GLADOS_CLI_PATH = "glados_cli.py"  # Adjust the path to your glados_cli.py if necessary
+CSV_FILE_PATH = "tests/integration/data/addNumbersExpected.csv"  # Adjust the path to your expected CSV file if necessary
+EXPERIMENT_FILE = "tests/integration/data/addNumbers.py"
 
 def compare_result_files(file1, file2):
     df1 = pd.read_csv(file1)
@@ -26,9 +32,13 @@ def compare_filtered(s1, s2):
 
     return filter_lines(s1) == filter_lines(s2)
 
+def teardown():
+    for f in glob.glob("Test_AddNums*"):
+        os.remove(f)
+
 print("Starting experiment creation test...\n")
 try:
-    result = subprocess.run(["python", "glados_cli.py", "-z", "test_submission_results/test_add_nums/addNumbers.py"], capture_output=True, text=True)
+    result = subprocess.run(["python", GLADOS_CLI_PATH, "-z", EXPERIMENT_FILE], capture_output=True, text=True)
     print("Output:\n", result.stdout.strip())
     experiment_id = result.stdout.strip().split('=')[1].strip(' ).')
     if result.stderr:
@@ -42,20 +52,20 @@ time.sleep(10) # Wait for a moment to ensure the experiment is fully registered 
 
 print("\nStarting experiment download test...\n")
 try:
-    result = subprocess.run(["python", "glados_cli.py", "-d", experiment_id], capture_output=True, text=True)
+    result = subprocess.run(["python", GLADOS_CLI_PATH, "-d", experiment_id], capture_output=True, text=True)
     print("Output:\n", result.stdout.strip())
     if result.stderr:
         print("Errors:\n", result.stderr.strip())  
     else:
         words = result.stdout.strip().split()
         file_name = next((w for w in words if w.endswith('.csv')), None)
-        compare_result_files("test_submission_results/test_add_nums/addNumbersExpected.csv", file_name)
+        compare_result_files(CSV_FILE_PATH, file_name)
 except Exception as e:
     print(f"Test failed with error: {e}")
     
 print("\nStarting experiment download all test...\n")
 try:
-    result = subprocess.run(["python", "glados_cli.py", "-da", experiment_id], capture_output=True, text=True)
+    result = subprocess.run(["python", GLADOS_CLI_PATH, "-da", experiment_id], capture_output=True, text=True)
     print("Output:\n", result.stdout.strip())
     if result.stderr:
         print("Errors:\n", result.stderr.strip())  
@@ -66,13 +76,13 @@ except Exception as e:
     
 print("\nStarting experiment query test...\n")
 try:
-    result = subprocess.run(["python", "glados_cli.py", "-q", "Test AddNums"], capture_output=True, text=True)
+    result = subprocess.run(["python", GLADOS_CLI_PATH, "-q", "Test AddNums"], capture_output=True, text=True)
     print("Output:\n", result.stdout.strip())
     if result.stderr:
         print("Errors:\n", result.stderr.strip())  
     else:
         # Compare expected results with actual results from query output
-        expected_output = "Matches:\n***********************************************\nExperiment 1: Test AddNums\n*********************************************** \nID: 69d342be8bb268f5b2add93d\nTags: ['Neural Network', 'ECE497']\nStatus: COMPLETED\nTime Started: 2026-04-06 01:21:14.109000\nTrials: 100/100 Completed"
+        expected_output = "Matches:\n***********************************************\nExperiment 1: Test AddNums\n*********************************************** \nID: 69d342be8bb268f5b2add93d\nTags: ['Test', 'AddNums']\nStatus: COMPLETED\nTime Started: 2026-04-06 01:21:14.109000\nTrials: 100/100 Completed"
         if compare_filtered(result.stdout.strip(), expected_output):
             print("\nTest passed: The query output matches the expected output.")
         else:
@@ -81,3 +91,4 @@ try:
 except Exception as e:
     print(f"\nTest failed with error: {e}")
 
+teardown()
