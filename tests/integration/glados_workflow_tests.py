@@ -50,6 +50,8 @@ def experiment_creation_test():
         experiment_id = result.stdout.strip().split('=')[1].strip(' ).')
         if result.stderr:
             print("Errors:\n", result.stderr.strip())
+        else:
+            print(f"Test passed: Experiment created successfully.")
     except Exception as e:
         print(f"Test failed with error: {e}")
         
@@ -97,7 +99,6 @@ def experiment_query():
                 print("\nTest passed: The query output matches the expected output.")
             else:
                 print("\nTest failed: The query output does not match the expected output.")
-            print("\nFinished querying experiment.")
     except Exception as e:
         print(f"\nTest failed with error: {e}")
     end_test_printout("Experiment Query Test")

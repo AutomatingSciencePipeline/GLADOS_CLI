@@ -9,7 +9,7 @@ import io
 import unittest
 import zipfile
 
-# Imports GLADOS CLI 
+# Import glados_cli.py, adjust if necessary
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 import glados_cli as gcli
