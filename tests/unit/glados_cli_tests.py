@@ -14,12 +14,16 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 
 import glados_cli as gcli
 
+VALID_EXPERIMENT_ZIP = 'tests/unit/data/valid-experiment.zip'
+EMPTY_EXPERIMENT_ZIP = 'tests/unit/data/empty-experiment.zip'
+MANIFEST_DIRECTORY = 'tests/unit/data/test_manifests/'
+
 class GladosCliTests(unittest.TestCase):
     
     def setUp(self):
         self.request_manager: gcli.RequestManager = mock.MagicMock()
-        self._makeZipFile('tests/unit/data/valid-experiment')
-        self._makeZipFile('tests/unit/data/empty-experiment')
+        self._makeZipFile(VALID_EXPERIMENT_ZIP.replace('.zip', ''))
+        self._makeZipFile(EMPTY_EXPERIMENT_ZIP.replace('.zip', ''))
         # Allow for testing what's printed to stdout and stderr
         self.out = io.StringIO()
         self.err = io.StringIO()
@@ -33,7 +37,7 @@ class GladosCliTests(unittest.TestCase):
             os.remove('.token.glados')
             
         # Clean up the generated zips
-        for path in ['tests/unit/data/valid-experiment.zip', 'tests/unit/data/empty-experiment.zip']:
+        for path in [VALID_EXPERIMENT_ZIP, EMPTY_EXPERIMENT_ZIP]:
             if os.path.exists(path):
                 os.remove(path)
                     
@@ -95,10 +99,10 @@ class GladosCliTests(unittest.TestCase):
             'error': '',
             'exp_id': 'exp123'
         }
-        self._assert_status_code(['-z', 'tests/unit/data/valid-experiment.zip'], gcli.EX_SUCCESS)
+        self._assert_status_code(['-z', VALID_EXPERIMENT_ZIP], gcli.EX_SUCCESS)
         
         self.request_manager.authenticate.assert_called_with('new_valid_token')
-        self.request_manager.upload_and_start_experiment.assert_called_with('tests/unit/data/valid-experiment.zip')
+        self.request_manager.upload_and_start_experiment.assert_called_with(VALID_EXPERIMENT_ZIP)
         self._assert_in_output('exp123')
         
     def test_with_stored_token(self) -> None:
@@ -112,9 +116,9 @@ class GladosCliTests(unittest.TestCase):
             'error': '',
             'exp_id': 'expabc'
         }
-        self._assert_status_code(['-z', 'tests/unit/data/valid-experiment.zip'], gcli.EX_SUCCESS)
+        self._assert_status_code(['-z', VALID_EXPERIMENT_ZIP], gcli.EX_SUCCESS)
         self.request_manager.authenticate.assert_called_with('valid_token')
-        self.request_manager.upload_and_start_experiment.assert_called_with('tests/unit/data/valid-experiment.zip')
+        self.request_manager.upload_and_start_experiment.assert_called_with(VALID_EXPERIMENT_ZIP)
         self._assert_in_output('expabc')
         
         os.remove('.token.glados')
@@ -145,9 +149,9 @@ class GladosCliTests(unittest.TestCase):
             'error': 'bad_format',
             'exp_id': ''
         }
-        self._assert_status_code(['-z', 'tests/unit/data/valid-experiment.zip'], gcli.EX_INVALID_EXP_FORMAT)
+        self._assert_status_code(['-z', VALID_EXPERIMENT_ZIP], gcli.EX_INVALID_EXP_FORMAT)
         self.request_manager.authenticate.assert_called_with('new_valid_token')
-        self.request_manager.upload_and_start_experiment.assert_called_with('tests/unit/data/valid-experiment.zip')
+        self.request_manager.upload_and_start_experiment.assert_called_with(VALID_EXPERIMENT_ZIP)
         self._assert_in_error('format')
         
     def test_run_experiment_other_backend_failure(self) -> None:
@@ -158,9 +162,9 @@ class GladosCliTests(unittest.TestCase):
             'error': 'other',
             'exp_id': ''
         }
-        self._assert_status_code(['-z', 'tests/unit/data/valid-experiment.zip'], gcli.EX_UNKNOWN)
+        self._assert_status_code(['-z', VALID_EXPERIMENT_ZIP], gcli.EX_UNKNOWN)
         self.request_manager.authenticate.assert_called_with('new_valid_token')
-        self.request_manager.upload_and_start_experiment.assert_called_with('tests/unit/data/valid-experiment.zip')
+        self.request_manager.upload_and_start_experiment.assert_called_with(VALID_EXPERIMENT_ZIP)
         self._assert_in_error('other')
         
     def test_query_one_experiment(self):
@@ -337,13 +341,13 @@ class GladosCliTests(unittest.TestCase):
         self._assert_in_output("Unable to download most up-to-date version")
         
     def test_manifest_no_errors(self):
-        gcli.check_manifest_format("tests/unit/data/test_manifests/test_manifest_no_errors.yml", False)
+        gcli.check_manifest_format(MANIFEST_DIRECTORY + "/test_manifest_no_errors.yml", False)
         self._assert_in_output("")
         
     def test_manifest_string_errors(self):
         buf = StringIO()
         with redirect_stdout(buf):
-            result = gcli.check_manifest_format("tests/unit/data/test_manifests/test_manifest_string_errors.yml", True)
+            result = gcli.check_manifest_format(MANIFEST_DIRECTORY + "/test_manifest_string_errors.yml", True)
         output = buf.getvalue()
         self.assertEqual(result, gcli.EX_INVALID_EXP_FORMAT)
         self.assertIn("name attribute in manifest.yml is empty, missing, or not a string.", output)
@@ -355,7 +359,7 @@ class GladosCliTests(unittest.TestCase):
     def test_manifest_int_errors(self):
         buf = StringIO()
         with redirect_stdout(buf):
-            result = gcli.check_manifest_format("tests/unit/data/test_manifests/test_manifest_int_errors.yml", True)
+            result = gcli.check_manifest_format(MANIFEST_DIRECTORY + "/test_manifest_int_errors.yml", True)
         output = buf.getvalue()
         self.assertEqual(result, gcli.EX_INVALID_EXP_FORMAT)
         self.assertIn("trialResultLineNumber attribute in manifest.yml is empty or missing.", output)
@@ -365,7 +369,7 @@ class GladosCliTests(unittest.TestCase):
     def test_manifest_bool_errors(self):
         buf = StringIO()
         with redirect_stdout(buf):
-            result = gcli.check_manifest_format("tests/unit/data/test_manifests/test_manifest_bool_errors.yml", True)
+            result = gcli.check_manifest_format(MANIFEST_DIRECTORY + "/test_manifest_bool_errors.yml", True)
         output = buf.getvalue()
         self.assertEqual(result, gcli.EX_INVALID_EXP_FORMAT)
         self.assertIn("sendEmail attribute in manifest.yml is empty, missing, or not true or false.", output)
@@ -374,7 +378,7 @@ class GladosCliTests(unittest.TestCase):
     def test_manifest_param_errors(self):
         buf = StringIO()
         with redirect_stdout(buf):
-            result = gcli.check_manifest_format("tests/unit/data/test_manifests/test_manifest_param_errors.yml", True)
+            result = gcli.check_manifest_format(MANIFEST_DIRECTORY + "/test_manifest_param_errors.yml", True)
         output = buf.getvalue()
         self.assertEqual(result, gcli.EX_INVALID_EXP_FORMAT)
         self.assertIn("min attribute in hyperparameter x is not a float.", output)
