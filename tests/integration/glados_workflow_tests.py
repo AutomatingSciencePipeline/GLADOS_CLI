@@ -1,118 +1,108 @@
-# To run this test script, ensure that you are first authenticated with the CLI,
-# as it expects there is a valid token stored in the .token.glados file.
-# There should also be no existing experiment with the same name as the one 
-# specified in the manifest.yml file of the experiment being tested, as this test 
-# script expects to create a new experiment and will fail if an experiment with the 
-# same name already exists.
-
-import os
+import unittest
 import subprocess
-import time
+import os
 import glob
+import time
 import pandas as pd
 
-GLADOS_CLI_PATH = "glados_cli.py"  # glados_cli.py file path from root of the repository, adjust if necessary
-CSV_FILE_PATH = "tests/integration/data/addNumbersExpected.csv"  # csv file path from root of the repository, adjust if necessary
-EXPERIMENT_FILE = "tests/integration/data/addNumbers.py" # executable file path from root of the repository, adjust if necessary
+GLADOS_CLI_PATH = "glados_cli.py"
+CSV_FILE_PATH = "tests/integration/data/addNumbersExpected.csv"
+EXPERIMENT_FILE = "tests/integration/data/addNumbers.py"
 
-def compare_result_files(file1, file2):
-    df1 = pd.read_csv(file1)
-    df2 = pd.read_csv(file2)
-    
-    if df1.equals(df2):
-        print("Test passed: The downloaded results match the expected results.")
-    else:
-        print("Test failed: The downloaded results do not match the expected results.")
-        
-def compare_filtered(s1, s2):
-    def filter_lines(text):
+class TestGladosCLI(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Clean up environment before starting tests."""
+        cls.experiment_id = None
+        cls._cleanup_files()
+
+    @staticmethod
+    def _cleanup_files():
+        for f in glob.glob("Test_AddNums*"):
+            os.remove(f)
+
+    def _run_cli(self, args):
+        cmd = ["python", GLADOS_CLI_PATH] + args
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        return result
+
+    def _assert_in_output(self, expected, actual, message=None):
+        self.assertIn(expected, actual, message or f"Expected '{expected}' not found in output.")
+
+    def _filter_output(self, text):
+        # ID and Time Started lines will vary, so they must be ignored
         skip_prefixes = ("ID:", "Time Started:")
-        return [line.strip() for line in text.splitlines() 
-                if not line.strip().startswith(skip_prefixes)]
+        return "\n".join([
+            line.strip() for line in text.splitlines() 
+            if not line.strip().startswith(skip_prefixes)
+        ])
 
-    return filter_lines(s1) == filter_lines(s2)
-
-def teardown():
-    for f in glob.glob("Test_AddNums*"):
-        os.remove(f)
+    def test_01_experiment_creation(self):
+        result = self._run_cli(["-z", EXPERIMENT_FILE])
         
-def start_test_printout(test_name):
-    print(f"\n{'='*10} Starting {test_name} {'='*10}\n")
-    
-def end_test_printout(test_name):
-    print(f"\n{'='*10} Finished {test_name} {'='*10}\n")
+        self.assertEqual(result.returncode, 0, f"CLI exited with error: {result.stderr}")
+        self._assert_in_output("Experiment started successfully", result.stdout)
         
-def experiment_creation_test():
-    start_test_printout("Experiment Creation Test")
-    try:
-        result = subprocess.run(["python", GLADOS_CLI_PATH, "-z", EXPERIMENT_FILE], capture_output=True, text=True)
-        print("Output:\n", result.stdout.strip())
-        experiment_id = result.stdout.strip().split('=')[1].strip(' ).')
-        if result.stderr:
-            print("Errors:\n", result.stderr.strip())
-        else:
-            print(f"Test passed: Experiment created successfully.")
-    except Exception as e:
-        print(f"Test failed with error: {e}")
+        # Parse and store the experiment ID for subsequent tests
+        try:
+            parts = result.stdout.strip().split('=')
+            TestGladosCLI.experiment_id = parts[1].strip(' ).').split()[0]
+        except (IndexError, AttributeError):
+            self.fail("Failed to parse Experiment ID from output.")
+
+    def test_02_experiment_download(self):
+        if not self.experiment_id:
+            self.skipTest("No experiment ID available from previous step.")
+
+        # Give the system a moment to register the experiment
+        time.sleep(10)
         
-    end_test_printout("Experiment Creation Test")
-    
-    return experiment_id
-
-def experiment_download(experiment_id):
-    start_test_printout("Experiment Download Test")
-    try:
-        result = subprocess.run(["python", GLADOS_CLI_PATH, "-da", experiment_id], capture_output=True, text=True)
-        print("Output:\n", result.stdout.strip())
-        if result.stderr:
-            print("Errors:\n", result.stderr.strip())  
-        else:
-            print("Test passed: Experiment artifacts downloaded successfully.")
-    except Exception as e:
-        print(f"Test failed with error: {e}")
-    end_test_printout("Experiment Download Test")
-
-def experiment_download_all(experiment_id):
-    start_test_printout("Experiment Download All Test")
-    try:
-        result = subprocess.run(["python", GLADOS_CLI_PATH, "-da", experiment_id], capture_output=True, text=True)
-        print("Output:\n", result.stdout.strip())
-        if result.stderr:
-            print("Errors:\n", result.stderr.strip())  
-        else:
-            print("Test passed: Experiment artifacts downloaded successfully.")
-    except Exception as e:
-        print(f"Test failed with error: {e}")
-    end_test_printout("Experiment Download All Test")
+        result = self._run_cli(["-d", self.experiment_id])
         
-def experiment_query():
-    start_test_printout("Experiment Query Test")
-    try:
-        result = subprocess.run(["python", GLADOS_CLI_PATH, "-q", "Test AddNums"], capture_output=True, text=True)
-        print("Output:\n", result.stdout.strip())
-        if result.stderr:
-            print("Errors:\n", result.stderr.strip())  
+        self.assertEqual(result.returncode, 0)
+        self.assertRegex(result.stdout, r"Experiment results Test_AddNums_.*\.csv downloaded successfully\.")
+        
+        downloaded_files = glob.glob("Test_AddNums*.csv")
+        if downloaded_files:
+            df_actual = pd.read_csv(downloaded_files[0])
+            df_expected = pd.read_csv(CSV_FILE_PATH)
+            pd.testing.assert_frame_equal(df_actual, df_expected)
         else:
-            # Compare expected results with actual results from query output
-            expected_output = "Matches:\n***********************************************\nExperiment 1: Test AddNums\n*********************************************** \nID: 69d342be8bb268f5b2add93d\nTags: ['Test', 'AddNums']\nStatus: COMPLETED\nTime Started: 2026-04-06 01:21:14.109000\nTrials: 100/100 Completed"
-            if compare_filtered(result.stdout.strip(), expected_output):
-                print("\nTest passed: The query output matches the expected output.")
-            else:
-                print("\nTest failed: The query output does not match the expected output.")
-    except Exception as e:
-        print(f"\nTest failed with error: {e}")
-    end_test_printout("Experiment Query Test")
+            self.fail("Results CSV file was not found after download.")
+        TestGladosCLI._cleanup_files()  # Remove csv file download from previous test to ensure this test is valid
+            
+    def test_03_experiment_download_all(self):
+        if not self.experiment_id:
+            self.skipTest("No experiment ID available from previous step.")
 
-def main():
-    experiment_id = experiment_creation_test()
+        # Give the system a moment to register the experiment
+        time.sleep(5)
+        
+        result = self._run_cli(["-da", self.experiment_id])
+        
+        self.assertEqual(result.returncode, 0)
+        self._assert_in_output("All experiment artifacts downloaded successfully.", result.stdout)
+        
+        downloaded_files = glob.glob("Test_AddNums*.csv")
+        if downloaded_files:
+            df_actual = pd.read_csv(downloaded_files[0])
+            df_expected = pd.read_csv(CSV_FILE_PATH)
+            pd.testing.assert_frame_equal(df_actual, df_expected)
+        else:
+            self.fail("Results CSV file was not found after download.")
+        TestGladosCLI._cleanup_files()  # Remove csv file download from previous test to ensure this test is valid
 
-    time.sleep(10) # Wait for a moment to ensure the experiment is fully registered before attempting to download
-    
-    experiment_download(experiment_id)
-    experiment_download_all(experiment_id)
-    experiment_query()
+    def test_04_experiment_query(self):
+        result = self._run_cli(["-q", "Test AddNums"])
+        
+        expected_output_fragment = (
+            "Matches:\n***********************************************\nExperiment 1: Test AddNums\n***********************************************\nTags: ['Test', 'AddNums']\nStatus: COMPLETED\nTrials: 100/100 Completed\n"
+        )
 
-    teardown()
+        actual_filtered = self._filter_output(result.stdout)
+        expected_filtered = self._filter_output(expected_output_fragment)
+        
+        self._assert_in_output(expected_filtered, actual_filtered)
 
 if __name__ == "__main__":
-    main()
+    unittest.main()
