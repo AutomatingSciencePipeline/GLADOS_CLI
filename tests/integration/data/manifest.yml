@@ -50,7 +50,7 @@ name: "Test AddNums"
 description: "This is to test AddNums!"
 # These are the tags which can be defined for an experiment, allowing for better filtering on the web app.
 # Example: ["Neural Network", "ECE497"]
-tags: ["Test", "AddNums"]
+tags: ["Neural Network", "ECE497"]
 # A folder or file included in the downloadable Project Zip after experiment completion.
 # Example: "test.csv"
 trialExtraFile: "AddNumResult.csv"
@@ -83,7 +83,7 @@ sendEmail: false
 workers: 1
 # If using a zip experiment, specify the main executable filename.
 # Example: "test.py" if using zip, "" if not
-experimentExecutable: "addNumber.py"
+experimentExecutable: ""
 # This attribute, set to either ini or yaml, defines the format of the config file generated for each trial.
 # Example: "ini" or "yaml"
 configFileFormat: "ini"
