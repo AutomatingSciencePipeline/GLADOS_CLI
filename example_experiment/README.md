@@ -1,6 +1,6 @@
 # GLADOS CLI Example Experiment
 
-This directory includes an example experiment (the "add_nums.py" and "manifest.yml" files), as well as a "template_manifest.yml" file that further explains some of the fields required of the manifest file.
+This directory includes an example experiment (the "add_nums.py" file with its associated manifest file being in the root directory), as well as a "template_manifest.yml" file that further explains some of the fields required of the manifest file.
 
 To run an experiment with the CLI, it is required that the experiment program have the same compatibility as what is normally submitted via the GLADOS web app (described [here](https://automatingsciencepipeline.github.io/Monorepo/tutorial/usage/)).
 
