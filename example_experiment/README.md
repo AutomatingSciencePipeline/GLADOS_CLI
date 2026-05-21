@@ -9,5 +9,5 @@ Additionally, it is required that there is a manifest.yml in the same directory 
 To run this experiment, move the manifest.yml file to the same directory as glados_cli.py, and run the command
 
 ```sh
-glados_cli.py -z example_experiment/add_nums.py
+python glados_cli.py -z example_experiment/add_nums.py
 ```
