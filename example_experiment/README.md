@@ -6,7 +6,7 @@ To run an experiment with the CLI, it is required that the experiment program ha
 
 Additionally, it is required that there is a manifest.yml in the same directory as the CLI that describes the attributes of the experiment normally defined in the information, parameters, and constants tabs. The fields required in this file are outlined in the "template_manifest.yml" file.
 
-To run this experiment, move the manifest.yml file to the same directory as glados_cli.py, and run the command
+To run this experiment, and run this command from the root directory:
 
 ```sh
 python glados_cli.py -z example_experiment/add_nums.py
