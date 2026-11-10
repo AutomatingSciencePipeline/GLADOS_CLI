@@ -194,10 +194,18 @@ class RequestManager(object):
         except requests.RequestException as error:
             perror(f'{error}')
         try:
-            json ={"id": submitted_exp["expId"]}
-            res = requests.post(START_EXPERIMENT_URL + submitted_exp["expId"], json=json, verify=False, timeout=40)
+            json = {"id": submitted_exp["expId"], "token": self.token}
+            res = requests.post(START_EXPERIMENT_URL + submitted_exp["expId"], json=json, verify=False, timeout=40, allow_redirects=False)
+            res.raise_for_status()
+            if not 200 <= res.status_code < 300:
+                raise requests.HTTPError("Experiment start was not accepted")
         except requests.RequestException as error:
             perror(f'{error}')
+            return {
+                'success': False,
+                'error': 'other',
+                'exp_id': submitted_exp["expId"]
+            }
             
         return {
             'success': True,
