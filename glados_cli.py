@@ -153,49 +153,79 @@ class RequestManager(object):
     
     def upload_and_start_experiment(self, experiment_path: str) -> Dict[str, typing.Any]:
         filename = os.path.basename(experiment_path)
-        files = {
-            "file": (filename, open(experiment_path, "rb"), "application/octet-stream")
-        }
         data = {
             "userToken": self.token
         }
         try:
-            res = requests.post(UPLOAD_EXPERIMENT_URL, verify=False, files=files, data=data, timeout=40)
-            time.sleep(5)
-        except requests.RequestException as error:
+            with open(experiment_path, "rb") as experiment_file:
+                files = {
+                    "file": (filename, experiment_file, "application/octet-stream")
+                }
+                res = requests.post(UPLOAD_EXPERIMENT_URL, verify=False, files=files, data=data, timeout=40, allow_redirects=False)
+            res.raise_for_status()
+            if not 200 <= res.status_code < 300:
+                raise requests.HTTPError("Experiment upload was not accepted")
+            submitted_exec_file = res.json()
+        except (requests.RequestException, ValueError, OSError, RecursionError) as error:
             perror(f'{error}')
-        if(res is None):
             return {
-            'success': False,
-            'error': 'other',
-            'exp_id': ''
-        }  
-        submitted_exec_file = res.json()
-        if(submitted_exec_file.get("fileId") is None):
+                'success': False,
+                'error': 'other',
+                'exp_id': ''
+            }
+        if not isinstance(submitted_exec_file, dict):
             return {
-            'success': False,
-            'error': submitted_exec_file.get('message'),
-            'exp_id': ''
-            }   
-            
-        files = {
-            "file": open("manifest.yml", "rb")
-        }
+                'success': False,
+                'error': 'other',
+                'exp_id': ''
+            }
+        file_id = submitted_exec_file.get("fileId")
+        if submitted_exec_file.get("success") is False or not isinstance(file_id, str) or not file_id.strip():
+            return {
+                'success': False,
+                'error': submitted_exec_file.get('message') or 'other',
+                'exp_id': ''
+            }
+        time.sleep(5)
         data = {
             "userToken": self.token,
-            "execFileID": submitted_exec_file['fileId']
+            "execFileID": file_id
         }
         try:
-            uploadMessage = submitted_exec_file["message"]
-            print(uploadMessage)
-            res = requests.post(SUBMIT_EXPERIMENT_URL, verify=False, files=files, data=data, timeout=40)
+            upload_message = submitted_exec_file.get("message")
+            if upload_message:
+                print(upload_message)
+            with open("manifest.yml", "rb") as manifest_file:
+                files = {"file": manifest_file}
+                res = requests.post(SUBMIT_EXPERIMENT_URL, verify=False, files=files, data=data, timeout=40, allow_redirects=False)
+            res.raise_for_status()
+            if not 200 <= res.status_code < 300:
+                raise requests.HTTPError("Experiment submission was not accepted")
             submitted_exp = res.json()
-            time.sleep(5)
-        except requests.RequestException as error:
+        except (requests.RequestException, ValueError, OSError, RecursionError) as error:
             perror(f'{error}')
+            return {
+                'success': False,
+                'error': 'other',
+                'exp_id': ''
+            }
+        if not isinstance(submitted_exp, dict):
+            return {
+                'success': False,
+                'error': 'other',
+                'exp_id': ''
+            }
+        exp_id = submitted_exp.get("expId")
+        if submitted_exp.get("success") is False or not isinstance(exp_id, str) or not exp_id.strip():
+            return {
+                'success': False,
+                'error': 'other',
+                'exp_id': ''
+            }
+        time.sleep(5)
         try:
-            json = {"id": submitted_exp["expId"], "token": self.token}
-            res = requests.post(START_EXPERIMENT_URL + submitted_exp["expId"], json=json, verify=False, timeout=40, allow_redirects=False)
+            json = {"id": exp_id, "token": self.token}
+            res = requests.post(START_EXPERIMENT_URL + exp_id, json=json, verify=False, timeout=40, allow_redirects=False)
             res.raise_for_status()
             if not 200 <= res.status_code < 300:
                 raise requests.HTTPError("Experiment start was not accepted")
@@ -204,13 +234,13 @@ class RequestManager(object):
             return {
                 'success': False,
                 'error': 'other',
-                'exp_id': submitted_exp["expId"]
+                'exp_id': exp_id
             }
             
         return {
             'success': True,
             'error': '',
-            'exp_id': submitted_exp["expId"]
+            'exp_id': exp_id
         }
     
     def query_experiments(self, experiment_name: str) -> Dict[str, typing.Any]:
